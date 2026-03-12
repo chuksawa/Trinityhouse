@@ -74,7 +74,7 @@ export default function HomePage() {
       {/* Hero — pastor at podium with overlay */}
       <section className="relative h-[70vh] min-h-[420px] overflow-hidden">
         <img
-          src="/pastor-hero.png"
+          src="/trinityhouse/pastor-hero.png"
           alt="Trinity House — teaching and worship"
           className="absolute inset-0 h-full w-full object-cover object-center"
           fetchPriority="high"
@@ -175,7 +175,7 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-slate-900">
         <div className="absolute inset-0">
           <img
-            src="/hero-location.png"
+            src="/trinityhouse/hero-location.png"
             alt="Trinity House — a place to belong"
             className="absolute inset-0 h-full w-full object-cover object-center opacity-30"
           />

@@ -51,7 +51,7 @@ export default function Sidebar() {
         className="flex h-16 items-center gap-3 border-b border-gray-800 px-4 transition-colors hover:bg-white/5"
       >
         <img
-          src="/trinity-house-logo.png"
+          src="/trinityhouse/trinity-house-logo.png"
           alt="Trinity House"
           className="h-8 w-auto shrink-0 object-contain opacity-85"
         />
