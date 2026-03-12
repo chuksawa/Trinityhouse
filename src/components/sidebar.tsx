@@ -13,7 +13,6 @@ import {
   BookOpen,
   Settings,
   LogOut,
-  Church,
   ChevronLeft,
   ChevronRight,
   Home,
@@ -51,9 +50,11 @@ export default function Sidebar() {
         href="/home"
         className="flex h-16 items-center gap-3 border-b border-gray-800 px-4 transition-colors hover:bg-white/5"
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white">
-          <Church className="h-5 w-5" />
-        </div>
+        <img
+          src="/trinity-house-logo.png"
+          alt="Trinity House"
+          className="h-8 w-auto shrink-0 object-contain opacity-85"
+        />
         {!collapsed && (
           <div className="overflow-hidden">
             <h1 className="text-base font-bold text-white tracking-tight">

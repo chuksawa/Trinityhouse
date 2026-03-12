@@ -20,7 +20,7 @@ const SERVICE_TIMES = [
   { day: "Wednesday", times: "7:00 PM", label: "Midweek" },
 ];
 
-const ADDRESS = "123 Faith Avenue, Your City, ST 12345";
+const ADDRESS = "Zion Centre, Trinity Avenue, Water Corporation Road, Off Ligali Ayorinde Street, Victoria Island, Lagos";
 const PHONE = "(555) 100-0000";
 const EMAIL = "hello@trinityhouse.org";
 
@@ -74,7 +74,7 @@ export default function HomePage() {
       {/* Hero — pastor at podium with overlay */}
       <section className="relative h-[70vh] min-h-[420px] overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1545235617-9465d2a55698?w=1920&q=80"
+          src="/pastor-hero.png"
           alt="Trinity House — teaching and worship"
           className="absolute inset-0 h-full w-full object-cover object-center"
           fetchPriority="high"
@@ -175,8 +175,8 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-slate-900">
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1516455590571-18256e5bb9ff?w=1920&q=80"
-            alt=""
+            src="/hero-location.png"
+            alt="Trinity House — a place to belong"
             className="absolute inset-0 h-full w-full object-cover object-center opacity-30"
           />
           <div className="absolute inset-0 bg-brand-950/80" />
