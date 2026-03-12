@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
   Church,
   MapPin,
@@ -74,13 +73,11 @@ export default function HomePage() {
 
       {/* Hero — pastor at podium with overlay */}
       <section className="relative h-[70vh] min-h-[420px] overflow-hidden">
-        <Image
+        <img
           src="https://images.unsplash.com/photo-1545235617-9465d2a55698?w=1920&q=80"
           alt="Trinity House — teaching and worship"
-          fill
-          className="object-cover object-center"
-          priority
-          sizes="100vw"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+          fetchPriority="high"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-brand-950/95 via-brand-900/75 to-brand-950/50" />
         <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-brand-950 to-transparent" />
@@ -177,12 +174,10 @@ export default function HomePage() {
       {/* Where we gather — dim background image */}
       <section className="relative overflow-hidden bg-slate-900">
         <div className="absolute inset-0">
-          <Image
+          <img
             src="https://images.unsplash.com/photo-1516455590571-18256e5bb9ff?w=1920&q=80"
             alt=""
-            fill
-            className="object-cover object-center opacity-30"
-            sizes="100vw"
+            className="absolute inset-0 h-full w-full object-cover object-center opacity-30"
           />
           <div className="absolute inset-0 bg-brand-950/80" />
         </div>
