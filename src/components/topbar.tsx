@@ -101,9 +101,17 @@ export default function Topbar() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const isTopbarMode = layoutMode === "topbar";
+  const dark = isTopbarMode;
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-gray-200 bg-white/80 px-6 backdrop-blur-sm">
+    <header
+      className={cn(
+        "sticky top-0 z-20 flex h-20 items-center justify-between gap-4 border-b px-6 transition-colors",
+        dark
+          ? "border-gray-800 bg-slate-900"
+          : "border-gray-200 bg-white/80 backdrop-blur-sm"
+      )}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-thin sm:gap-2">
         {isTopbarMode ? (
           <>
@@ -117,9 +125,13 @@ export default function Topbar() {
                   href={item.href}
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors sm:px-3",
-                    isActive
-                      ? "bg-brand-100 text-brand-700"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    dark
+                      ? isActive
+                        ? "bg-brand-600/30 text-brand-300"
+                        : "text-gray-400 hover:bg-white/10 hover:text-white"
+                      : isActive
+                        ? "bg-brand-100 text-brand-700"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                   )}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
@@ -135,9 +147,13 @@ export default function Topbar() {
                   href={item.href}
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors sm:px-3",
-                    isActive
-                      ? "bg-brand-100 text-brand-700"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    dark
+                      ? isActive
+                        ? "bg-brand-600/30 text-brand-300"
+                        : "text-gray-400 hover:bg-white/10 hover:text-white"
+                      : isActive
+                        ? "bg-brand-100 text-brand-700"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                   )}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
@@ -150,9 +166,13 @@ export default function Topbar() {
                 href="/dashboard/admin"
                 className={cn(
                   "flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors sm:px-3",
-                  pathname?.startsWith("/dashboard/admin")
-                    ? "bg-brand-100 text-brand-700"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  dark
+                    ? pathname?.startsWith("/dashboard/admin")
+                      ? "bg-brand-600/30 text-brand-300"
+                      : "text-gray-400 hover:bg-white/10 hover:text-white"
+                    : pathname?.startsWith("/dashboard/admin")
+                      ? "bg-brand-100 text-brand-700"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 )}
               >
                 <Shield className="h-4 w-4 shrink-0" />
@@ -181,24 +201,34 @@ export default function Topbar() {
           </>
         )}
         {searchOpen ? (
-          <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-gray-400" />
+          <div className={cn("flex items-center gap-2", dark && "text-gray-300")}>
+            <Search className="h-4 w-4 shrink-0" />
             <input
               autoFocus
               type="text"
               placeholder="Search people, groups, events…"
-              className="w-72 border-none bg-transparent text-sm outline-none placeholder:text-gray-400"
+              className={cn(
+                "w-72 border-none bg-transparent text-sm outline-none",
+                dark
+                  ? "placeholder:text-gray-500 text-white"
+                  : "placeholder:text-gray-400 text-gray-900"
+              )}
               onBlur={() => setSearchOpen(false)}
             />
           </div>
         ) : (
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-500 transition-colors hover:bg-gray-200"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+              dark
+                ? "bg-white/10 text-gray-400 hover:bg-white/15 hover:text-gray-300"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            )}
           >
             <Search className="h-4 w-4" />
             <span>Search…</span>
-            <kbd className="ml-8 hidden rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-400 sm:inline">
+            <kbd className={cn("ml-8 hidden rounded px-1.5 py-0.5 text-[10px] font-medium sm:inline", dark ? "border border-gray-600 bg-white/10 text-gray-500" : "border border-gray-300 bg-white text-gray-400")}>
               ⌘K
             </kbd>
           </button>
@@ -209,7 +239,10 @@ export default function Topbar() {
         <button
           type="button"
           onClick={toggleLayoutMode}
-          className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          className={cn(
+            "rounded-lg p-2 transition-colors",
+            dark ? "text-gray-400 hover:bg-white/10 hover:text-white" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          )}
           title={isTopbarMode ? "Switch to side bar navigation" : "Switch to top bar navigation"}
         >
           {isTopbarMode ? (
@@ -222,7 +255,10 @@ export default function Topbar() {
           <button
             type="button"
             onClick={() => setBellOpen((o) => !o)}
-            className="relative rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            className={cn(
+              "relative rounded-lg p-2 transition-colors",
+              dark ? "text-gray-400 hover:bg-white/10 hover:text-white" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            )}
             title="Notifications"
           >
             <Bell className="h-5 w-5" />
@@ -260,15 +296,22 @@ export default function Topbar() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-gray-100">
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors",
+            dark ? "hover:bg-white/10" : "hover:bg-gray-100"
+          )}
+        >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
             {user?.email ? initialsFromEmail(user.email) : "—"}
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-gray-800">
+            <p className={cn("text-sm font-semibold", dark ? "text-gray-200" : "text-gray-800")}>
               {user?.email ? displayNameFromEmail(user.email) : "—"}
             </p>
-            <p className="text-xs text-gray-500">{user?.role ? formatRole(user.role) : "—"}</p>
+            <p className={cn("text-xs", dark ? "text-gray-500" : "text-gray-500")}>
+              {user?.role ? formatRole(user.role) : "—"}
+            </p>
           </div>
         </div>
       </div>
