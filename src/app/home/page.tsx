@@ -52,7 +52,7 @@ export default function HomePage() {
             <br />
             One family.
             <span className="ml-2 inline-block h-[0.9em] w-[0.4em] align-middle" aria-hidden>
-              <svg viewBox="0 0 24 56" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" className="h-full w-full text-white">
+              <svg viewBox="0 0 24 56" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" className="h-full w-full text-white">
                 <line x1="12" y1="0" x2="12" y2="56" />
                 <line x1="2" y1="14" x2="22" y2="14" />
               </svg>
