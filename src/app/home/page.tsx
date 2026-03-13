@@ -43,8 +43,8 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-t from-brand-950/95 via-brand-900/75 to-brand-950/50" />
         <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-brand-950 to-transparent" />
         <div className="relative flex h-full flex-col items-center justify-center px-4 py-16 text-center">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium text-white/90 backdrop-blur">
-            <Sparkles className="h-4 w-4" />
+          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-base font-medium text-white/90 backdrop-blur sm:text-lg">
+            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
             Welcome home
           </p>
           <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
