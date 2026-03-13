@@ -199,7 +199,7 @@ export default function HomePage() {
                 </div>
               </div>
               <Link
-                href="/login"
+                href="/watch"
                 className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-700"
               >
                 Browse sermon archive <ArrowRight className="h-4 w-4" />

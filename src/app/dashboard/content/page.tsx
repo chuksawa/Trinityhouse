@@ -1,11 +1,23 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Plus, Play, Share2, Bookmark, Download } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Plus, Play, Share2, Bookmark, Download, Globe } from "lucide-react";
 import Modal from "@/components/modal";
-import { cn, formatDate } from "@/lib/utils";
-import { sermons } from "@/lib/data";
-import type { Sermon } from "@/lib/data";
+import { formatDate } from "@/lib/utils";
+
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
+type DashboardSermon = {
+  id: string;
+  title: string;
+  speaker: string;
+  series: string;
+  date: string;
+  duration: string;
+  views: number;
+  description: string;
+  showPublic: boolean;
+};
 
 const READING_PLANS = [
   {
@@ -29,19 +41,56 @@ const READING_PLANS = [
 ];
 
 export default function ContentPage() {
-  const [selectedSermon, setSelectedSermon] = useState<Sermon | null>(null);
+  const [sermons, setSermons] = useState<DashboardSermon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSermon, setSelectedSermon] = useState<DashboardSermon | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const latestSermon = useMemo(() => sermons[0] ?? null, []);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE_PATH}/api/sermons`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : { sermons: [] }))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data.sermons)) {
+          setSermons(data.sermons.map((s: { showPublic?: boolean } & DashboardSermon) => ({
+            ...s,
+            showPublic: s.showPublic ?? true,
+          })));
+        }
+      })
+      .catch(() => { if (!cancelled) setSermons([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
-  const sermonArchive = useMemo(() => sermons.slice(1), []);
-
+  const latestSermon = useMemo(() => sermons[0] ?? null, [sermons]);
+  const sermonArchive = useMemo(() => sermons.slice(1), [sermons]);
   const seriesList = useMemo(() => {
     const map = new Map<string, number>();
     sermons.forEach((s) => {
       map.set(s.series, (map.get(s.series) ?? 0) + 1);
     });
     return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
-  }, []);
+  }, [sermons]);
+
+  async function setShowPublic(id: string, showPublic: boolean) {
+    setTogglingId(id);
+    try {
+      const res = await fetch(`${BASE_PATH}/api/sermons/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ showPublic }),
+      });
+      if (res.ok) {
+        setSermons((prev) =>
+          prev.map((s) => (s.id === id ? { ...s, showPublic } : s))
+        );
+      }
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -54,6 +103,9 @@ export default function ContentPage() {
         </button>
       </div>
 
+      {loading ? (
+        <p className="py-8 text-center text-gray-500">Loading content…</p>
+      ) : (
       <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
         <div className="flex-1 space-y-8">
           {/* Featured / Latest Sermon Hero */}
@@ -95,6 +147,20 @@ export default function ContentPage() {
                     Save
                   </button>
                 </div>
+                <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
+                  <input
+                    id={`show-public-${latestSermon.id}`}
+                    type="checkbox"
+                    checked={latestSermon.showPublic}
+                    disabled={togglingId === latestSermon.id}
+                    onChange={(e) => setShowPublic(latestSermon.id, e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                  />
+                  <label htmlFor={`show-public-${latestSermon.id}`} className="flex items-center gap-1.5 text-sm text-gray-700">
+                    <Globe className="h-4 w-4" />
+                    Show on public site
+                  </label>
+                </div>
               </div>
             </div>
           )}
@@ -128,6 +194,21 @@ export default function ContentPage() {
                       <span>{sermon.duration}</span>
                       <span>•</span>
                       <span>{sermon.views} views</span>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+                      <input
+                        id={`show-public-${sermon.id}`}
+                        type="checkbox"
+                        checked={sermon.showPublic}
+                        disabled={togglingId === sermon.id}
+                        onChange={(e) => { e.stopPropagation(); setShowPublic(sermon.id, e.target.checked); }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-3.5 w-3.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      <label htmlFor={`show-public-${sermon.id}`} className="flex items-center gap-1 text-xs text-gray-600" onClick={(e) => e.stopPropagation()}>
+                        <Globe className="h-3.5 w-3.5" />
+                        Show on public site
+                      </label>
                     </div>
                   </div>
                 </button>
@@ -173,7 +254,7 @@ export default function ContentPage() {
           </div>
         </aside>
       </div>
-
+      )}
       {/* Sermon Detail Modal */}
       <Modal
         open={!!selectedSermon}
@@ -181,7 +262,9 @@ export default function ContentPage() {
         title={selectedSermon?.title ?? "Sermon"}
         wide
       >
-        {selectedSermon && (
+        {selectedSermon && (() => {
+          const current = sermons.find((s) => s.id === selectedSermon.id) ?? selectedSermon;
+          return (
           <div className="space-y-6">
             <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-600 to-slate-800">
               <div className="absolute inset-0 flex items-center justify-center">
@@ -194,15 +277,29 @@ export default function ContentPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="badge-purple">{selectedSermon.series}</span>
-              <span className="text-sm text-gray-600">{selectedSermon.speaker}</span>
-              <span className="text-sm text-gray-500">{formatDate(selectedSermon.date)}</span>
-              <span className="text-sm text-gray-500">{selectedSermon.duration}</span>
-              <span className="text-sm text-gray-500">{selectedSermon.views} views</span>
+              <span className="badge-purple">{current.series}</span>
+              <span className="text-sm text-gray-600">{current.speaker}</span>
+              <span className="text-sm text-gray-500">{formatDate(current.date)}</span>
+              <span className="text-sm text-gray-500">{current.duration}</span>
+              <span className="text-sm text-gray-500">{current.views} views</span>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Description</p>
-              <p className="mt-1 text-gray-700">{selectedSermon.description}</p>
+              <p className="mt-1 text-gray-700">{current.description}</p>
+            </div>
+            <div className="flex items-center gap-2 border-t border-gray-100 pt-4">
+              <input
+                id="modal-show-public"
+                type="checkbox"
+                checked={current.showPublic}
+                disabled={togglingId === current.id}
+                onChange={(e) => setShowPublic(current.id, e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              />
+              <label htmlFor="modal-show-public" className="flex items-center gap-1.5 text-sm text-gray-700">
+                <Globe className="h-4 w-4" />
+                Show on public site
+              </label>
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn-primary">
@@ -219,7 +316,8 @@ export default function ContentPage() {
               </button>
             </div>
           </div>
-        )}
+          );
+        })()}
       </Modal>
     </div>
   );

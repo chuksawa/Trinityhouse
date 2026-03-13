@@ -67,7 +67,7 @@ export default function PublicHeader() {
             Events
           </Link>
           <Link
-            href="/home#watch"
+            href="/watch"
             className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
           >
             Watch
