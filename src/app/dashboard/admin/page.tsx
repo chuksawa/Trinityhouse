@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, UserCheck, UserX, UserCog } from "lucide-react";
+import { Shield, UserCheck, UserX, UserCog, ArrowDown, Save } from "lucide-react";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 type PendingItem = { id: number; email: string; requestedAt: string; registrationType?: string };
 type UserItem = { id: number; email: string; role: string; status: string; createdAt: string };
+type PeopleRoleOrder = { role: string; rank: number }[];
+type AppRoleEditScope = Record<string, string[]>;
 
 export default function AdminPage() {
   const router = useRouter();
@@ -15,8 +17,10 @@ export default function AdminPage() {
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [pending, setPending] = useState<PendingItem[]>([]);
   const [users, setUsers] = useState<UserItem[]>([]);
+  const [hierarchy, setHierarchy] = useState<{ peopleRoleOrder: PeopleRoleOrder; appRoleEditScope: AppRoleEditScope } | null>(null);
   const [error, setError] = useState("");
   const [actioning, setActioning] = useState<number | null>(null);
+  const [hierarchySaving, setHierarchySaving] = useState(false);
 
   function loadSession() {
     return fetch(`${BASE_PATH}/api/auth/session/`, { credentials: "include" })
@@ -28,6 +32,7 @@ export default function AdminPage() {
     return Promise.all([
       fetch(`${BASE_PATH}/api/admin/pending/`, { credentials: "include" }).then((r) => r.json()),
       fetch(`${BASE_PATH}/api/admin/users/`, { credentials: "include" }).then((r) => r.json()),
+      fetch(`${BASE_PATH}/api/admin/hierarchy/`, { credentials: "include" }).then((r) => r.ok ? r.json() : {}),
     ]);
   }
 
@@ -40,10 +45,12 @@ export default function AdminPage() {
         return;
       }
       setIsSuperuser(true);
-      loadData().then(([pendingRes, usersRes]) => {
+      loadData().then(([pendingRes, usersRes, hierarchyRes]) => {
         if (cancelled) return;
         if (pendingRes.pending) setPending(pendingRes.pending);
         if (usersRes.users) setUsers(usersRes.users);
+        const h = hierarchyRes as { peopleRoleOrder?: PeopleRoleOrder; appRoleEditScope?: AppRoleEditScope } | null;
+        if (h && typeof h === "object") setHierarchy({ peopleRoleOrder: h.peopleRoleOrder ?? [], appRoleEditScope: h.appRoleEditScope ?? {} });
         if (pendingRes.error || usersRes.error) setError(pendingRes.error || usersRes.error);
       }).finally(() => {
         if (!cancelled) setLoading(false);
@@ -53,10 +60,40 @@ export default function AdminPage() {
   }, [router]);
 
   function refresh() {
-    loadData().then(([pendingRes, usersRes]) => {
+    loadData().then(([pendingRes, usersRes, hierarchyRes]) => {
       if (pendingRes.pending) setPending(pendingRes.pending);
       if (usersRes.users) setUsers(usersRes.users);
+      const h = hierarchyRes as { peopleRoleOrder?: PeopleRoleOrder; appRoleEditScope?: AppRoleEditScope } | null;
+      if (h && typeof h === "object") setHierarchy({ peopleRoleOrder: h.peopleRoleOrder ?? [], appRoleEditScope: h.appRoleEditScope ?? {} });
     });
+  }
+
+  async function handleSaveHierarchy() {
+    if (!hierarchy) return;
+    setHierarchySaving(true);
+    setError("");
+    try {
+      const res = await fetch(`${BASE_PATH}/api/admin/hierarchy/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          peopleRoleOrder: hierarchy.peopleRoleOrder,
+          appRoleEditScope: hierarchy.appRoleEditScope,
+        }),
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Failed to save hierarchy");
+        return;
+      }
+    } finally {
+      setHierarchySaving(false);
+    }
+  }
+
+  function formatPeopleRole(role: string) {
+    return role.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   }
 
   async function handleApprove(userId: number) {
@@ -259,6 +296,88 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      {/* Role hierarchy (People & Care edit permissions) */}
+      <section className="card overflow-hidden">
+        <h2 className="text-lg font-semibold text-gray-900 px-4 py-3 border-b border-gray-200 flex items-center gap-2">
+          <ArrowDown className="h-5 w-5 text-brand-600" />
+          Role hierarchy
+        </h2>
+        <p className="px-4 pt-3 text-sm text-gray-500">
+          Controls who can edit whom on the People & Care page. People roles are ordered by authority (top = highest). Each app role can edit people with the selected roles below them.
+        </p>
+        {hierarchy && (
+          <div className="px-4 py-4 space-y-6">
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">People role order (highest → lowest)</h3>
+              <p className="text-xs text-gray-500 mb-2">Order defines authority; staff can only edit roles at or below their scope.</p>
+              <ul className="flex flex-wrap gap-2">
+                {hierarchy.peopleRoleOrder.map((r, i) => (
+                  <li key={r.role} className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
+                    {i + 1}. {formatPeopleRole(r.role)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Who can edit which people roles</h3>
+              <div className="space-y-3">
+                {["superuser", "admin", "user"].map((appRole) => {
+                  const editable = hierarchy.appRoleEditScope[appRole] ?? [];
+                  const isSuperuser = appRole === "superuser";
+                  return (
+                    <div key={appRole} className="flex flex-wrap items-center gap-3">
+                      <span className="w-24 font-medium text-gray-800 capitalize">{appRole}</span>
+                      {isSuperuser ? (
+                        <span className="text-sm text-gray-500">Can edit all people (fixed)</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {hierarchy.peopleRoleOrder.map(({ role }) => {
+                            const checked = editable.includes(role);
+                            return (
+                              <label key={role} className="inline-flex items-center gap-1.5 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    setHierarchy((prev) => {
+                                      if (!prev) return prev;
+                                      const next = { ...prev, appRoleEditScope: { ...prev.appRoleEditScope } };
+                                      const arr = [...(next.appRoleEditScope[appRole] ?? [])];
+                                      if (e.target.checked) arr.push(role);
+                                      else arr.splice(arr.indexOf(role), 1);
+                                      next.appRoleEditScope[appRole] = arr;
+                                      return next;
+                                    });
+                                  }}
+                                  className="rounded border-gray-300 text-brand-600 focus:ring-brand-600"
+                                />
+                                {formatPeopleRole(role)}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveHierarchy}
+              disabled={hierarchySaving}
+              className="btn-primary inline-flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {hierarchySaving ? "Saving…" : "Save hierarchy"}
+            </button>
+          </div>
+        )}
+        {!hierarchy && !loading && (
+          <p className="px-4 py-6 text-gray-500 text-sm">Run migration 009 to enable role hierarchy.</p>
+        )}
       </section>
     </div>
   );
