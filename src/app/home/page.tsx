@@ -61,12 +61,7 @@ export default function HomePage() {
             >
               I&apos;m New Here
             </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 rounded-xl border-2 border-white/40 bg-white/10 px-6 py-3.5 text-base font-semibold text-white backdrop-blur transition-all hover:bg-white/20"
-            >
-              Sign In to the App
-            </Link>
+            {/* Sign In to the App — hidden for now, resurrect when needed */}
             <Link
               href="/register"
               className="inline-flex items-center gap-2 rounded-xl border-2 border-white/30 bg-white/5 px-6 py-3.5 text-base font-semibold text-white/90 backdrop-blur transition-all hover:bg-white/15"
