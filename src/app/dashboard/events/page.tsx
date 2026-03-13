@@ -59,11 +59,25 @@ function formatEventType(type: string): string {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
+/** Parse stored time (e.g. "9:00 AM", "09:00") to HH:mm for <input type="time">. */
+function parseTimeForInput(s: string | undefined): string {
+  if (!s || !s.trim()) return "";
+  const t = s.trim();
+  const match = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?$/);
+  if (!match) return "";
+  let h = parseInt(match[1], 10);
+  const m = match[2];
+  const period = match[3]?.toUpperCase();
+  if (period === "PM" && h !== 12) h += 12;
+  if (period === "AM" && h === 12) h = 0;
+  return `${String(h).padStart(2, "0")}:${m}`;
+}
+
 const emptyForm = {
   title: "",
   type: "event" as EventType,
   date: "",
-  time: "",
+  time: "09:00",
   endTime: "",
   location: "",
   capacity: 0,
@@ -126,8 +140,8 @@ export default function EventsPage() {
       title: event.title,
       type: event.type,
       date: event.date,
-      time: event.time,
-      endTime: event.endTime ?? "",
+      time: parseTimeForInput(event.time) || "09:00",
+      endTime: parseTimeForInput(event.endTime) ?? "",
       location: event.location ?? "",
       capacity: event.capacity,
       description: event.description ?? "",
@@ -403,11 +417,10 @@ export default function EventsPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Time *</label>
               <input
-                type="text"
+                type="time"
                 value={form.time}
                 onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
                 className="input"
-                placeholder="9:00 AM"
                 required
               />
             </div>
@@ -415,11 +428,10 @@ export default function EventsPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">End time</label>
             <input
-              type="text"
+              type="time"
               value={form.endTime}
               onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
               className="input"
-              placeholder="11:30 AM"
             />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
