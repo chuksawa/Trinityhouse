@@ -5,15 +5,14 @@ import {
   Clock,
   Heart,
   Users,
-  Calendar,
   Play,
   ArrowRight,
   Mail,
   Phone,
   Sparkles,
 } from "lucide-react";
-import { events, sermons } from "@/lib/data";
-import { formatDateShort } from "@/lib/utils";
+import { sermons } from "@/lib/data";
+import PublicEventsBlock from "@/components/public-events-block";
 
 const SERVICE_TIMES = [
   { day: "Sunday", times: "9:00 AM & 11:00 AM", label: "Worship" },
@@ -25,10 +24,6 @@ const PHONE = "(555) 100-0000";
 const EMAIL = "hello@trinityhouse.org";
 
 export default function HomePage() {
-  const upcomingEvents = [...events]
-    .filter((e) => new Date(e.date) >= new Date())
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 4);
   const latestSermon = sermons[0];
 
   return (
@@ -50,7 +45,7 @@ export default function HomePage() {
               Visit
             </Link>
             <Link
-              href="/home#events"
+              href="/events"
               className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               Events
@@ -203,64 +198,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* This weekend / Upcoming events */}
-      <section id="events" className="scroll-mt-20 px-4 py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-                What&apos;s Happening
-              </h2>
-              <p className="mt-2 text-lg text-gray-600">
-                Services, events, and ways to get connected.
-              </p>
-            </div>
-            <Link
-              href="/login"
-              className="btn-secondary inline-flex shrink-0 items-center gap-2"
-            >
-              View all events <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {upcomingEvents.map((event) => (
-              <Link
-                key={event.id}
-                href="/login"
-                className="card group flex flex-col p-5 transition-shadow hover:shadow-md"
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`badge ${
-                      event.type === "service"
-                        ? "badge-purple"
-                        : event.type === "event"
-                        ? "badge-blue"
-                        : event.type === "conference"
-                        ? "badge-green"
-                        : "badge-gray"
-                    }`}
-                  >
-                    {event.type}
-                  </span>
-                </div>
-                <h3 className="mt-3 font-semibold text-gray-900 group-hover:text-brand-600">
-                  {event.title}
-                </h3>
-                <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-500">
-                  <Calendar className="h-4 w-4 shrink-0" />
-                  {formatDateShort(event.date)} · {event.time}
-                </p>
-                {event.registered > 0 && event.capacity > 0 && (
-                  <p className="mt-2 text-xs text-gray-500">
-                    {event.registered} registered
-                  </p>
-                )}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Events & Weekends — public, from dashboard-managed list */}
+      <PublicEventsBlock />
 
       {/* Watch / Latest sermon (congregation + visitors) */}
       <section id="watch" className="scroll-mt-20 border-y border-gray-200 bg-white px-4 py-16 sm:py-20">
