@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { query } from "@/lib/db";
-import { createToken, getCookieName, getCookiePath } from "@/lib/auth";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -9,6 +8,7 @@ function isValidEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
 
+/** Registration creates a pending user; superuser must approve before they can sign in. */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -40,20 +40,14 @@ export async function POST(req: Request) {
 
     const password_hash = await bcrypt.hash(password, 12);
     await query(
-      "INSERT INTO app_users (email, password_hash, role) VALUES ($1, $2, $3)",
-      [email, password_hash, "user"]
+      "INSERT INTO app_users (email, password_hash, role, status) VALUES ($1, $2, $3, $4)",
+      [email, password_hash, "user", "pending"]
     );
 
-    const token = await createToken({ email, role: "user" });
-    const res = NextResponse.json({ ok: true });
-    res.cookies.set(getCookieName(), token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: getCookiePath(),
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+    return NextResponse.json({
+      ok: true,
+      message: "Registration submitted. You'll be able to sign in once an administrator approves your account.",
     });
-    return res;
   } catch (e) {
     console.error("Register error:", e);
     return NextResponse.json({ error: "Registration failed" }, { status: 500 });

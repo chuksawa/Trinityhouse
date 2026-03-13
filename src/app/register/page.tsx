@@ -14,10 +14,12 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -43,8 +45,8 @@ export default function RegisterPage() {
         setLoading(false);
         return;
       }
-      router.push(`${BASE_PATH}/dashboard/`);
-      router.refresh();
+      setSuccessMessage(data.message || "Registration submitted. You'll be able to sign in once an administrator approves your account.");
+      setLoading(false);
     } catch {
       setError("Registration failed");
       setLoading(false);
@@ -122,6 +124,27 @@ export default function RegisterPage() {
             </p>
           </div>
 
+          {successMessage ? (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-4 text-sm text-green-800">
+                {successMessage}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Link
+                  href={`${BASE_PATH}/login/`}
+                  className="btn-primary w-full text-center"
+                >
+                  Go to Sign in
+                </Link>
+                <Link
+                  href="/home"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Back to home
+                </Link>
+              </div>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -177,9 +200,10 @@ export default function RegisterPage() {
               disabled={loading}
               className="btn-primary w-full"
             >
-              {loading ? "Creating account…" : "Create account"}
+              {loading ? "Submitting…" : "Request account"}
             </button>
           </form>
+          )}
 
           <p className="text-center text-sm text-gray-500">
             Already have an account?{" "}

@@ -13,14 +13,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email and password required" }, { status: 400 });
     }
 
-    const { rows } = await query<{ id: number; email: string; password_hash: string; role: string }>(
-      "SELECT id, email, password_hash, role FROM app_users WHERE email = $1",
+    const { rows } = await query<{ id: number; email: string; password_hash: string; role: string; status: string }>(
+      "SELECT id, email, password_hash, role, COALESCE(status, 'active') AS status FROM app_users WHERE email = $1",
       [email]
     );
 
     const user = rows[0];
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+    }
+    if (user.status !== "active") {
+      return NextResponse.json(
+        { error: "Your account is pending approval. You'll be able to sign in once an administrator approves your registration." },
+        { status: 403 }
+      );
     }
 
     const token = await createToken({ email: user.email, role: user.role });

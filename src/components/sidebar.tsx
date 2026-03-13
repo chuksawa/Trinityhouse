@@ -12,12 +12,13 @@ import {
   MessageSquare,
   BookOpen,
   Settings,
+  Shield,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Home,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const navItems = [
   { href: "/home", label: "Home", icon: Home },
@@ -40,6 +41,18 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [isSuperuser, setIsSuperuser] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE_PATH}/api/auth/session/`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : { user: null })
+      .then((data) => {
+        if (!cancelled) setIsSuperuser(data.user?.role === "superuser");
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   async function handleSignOut() {
     await fetch(`${BASE_PATH}/api/auth/logout/`, { method: "POST", credentials: "include" });
@@ -102,6 +115,20 @@ export default function Sidebar() {
 
       {/* Bottom */}
       <div className="border-t border-gray-800 p-3 space-y-1">
+        {isSuperuser && (
+          <Link
+            href="/dashboard/admin"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              pathname === "/dashboard/admin" || pathname.startsWith("/dashboard/admin")
+                ? "bg-brand-600/20 text-brand-300"
+                : "text-gray-400 hover:bg-white/5 hover:text-white"
+            )}
+          >
+            <Shield className="h-5 w-5 shrink-0" />
+            {!collapsed && <span>Admin</span>}
+          </Link>
+        )}
         {bottomItems.map((item) => {
           const isActive = pathname === item.href;
           return (

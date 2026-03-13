@@ -73,7 +73,7 @@ export default function RolesSettingsPage() {
                     {u.email === data.currentUserEmail && <span className="ml-2 text-xs text-gray-500">(you)</span>}
                   </td>
                   <td className="table-cell">
-                    <span className={u.role === "superuser" ? "badge-purple" : u.role === "user" ? "badge-blue" : "badge-gray"}>{u.role}</span>
+                    <span className={u.role === "superuser" ? "badge-purple" : u.role === "admin" ? "badge-blue" : "badge-gray"}>{u.role}</span>
                   </td>
                   <td className="table-cell text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                 </tr>
