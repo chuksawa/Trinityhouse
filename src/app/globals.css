@@ -71,4 +71,11 @@
     background-color: #cbd5e1;
     border-radius: 3px;
   }
+  /* Hide scrollbar but keep overflow scroll (removes the line under topbar nav) */
+  .scrollbar-hide {
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
