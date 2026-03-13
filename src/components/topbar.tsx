@@ -7,12 +7,44 @@ import { useState, useRef, useEffect } from "react";
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 type NotificationItem = { id: string; title: string; body: string; read: boolean; createdAt: string };
+type SessionUser = { email?: string; role?: string } | null;
+
+function displayNameFromEmail(email: string): string {
+  const local = email.split("@")[0] ?? email;
+  return local.charAt(0).toUpperCase() + local.slice(1).toLowerCase();
+}
+
+function initialsFromEmail(email: string): string {
+  const local = (email.split("@")[0] ?? email).replace(/[^a-zA-Z0-9]/g, "");
+  if (local.length >= 2) return local.slice(0, 2).toUpperCase();
+  return (local || "?").slice(0, 2).toUpperCase();
+}
+
+function formatRole(role: string): string {
+  if (role === "superuser") return "Superuser";
+  if (role === "admin") return "Admin";
+  return "User";
+}
 
 export default function Topbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [user, setUser] = useState<SessionUser>(null);
   const bellRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE_PATH}/api/auth/session/`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { user: null }))
+      .then((data) => {
+        if (!cancelled) setUser(data.user ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,13 +162,13 @@ export default function Topbar() {
         </div>
         <div className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-gray-100">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
-            DO
+            {user?.email ? initialsFromEmail(user.email) : "—"}
           </div>
           <div className="hidden sm:block">
             <p className="text-sm font-semibold text-gray-800">
-              Pastor David
+              {user?.email ? displayNameFromEmail(user.email) : "—"}
             </p>
-            <p className="text-xs text-gray-500">Senior Pastor</p>
+            <p className="text-xs text-gray-500">{user?.role ? formatRole(user.role) : "—"}</p>
           </div>
         </div>
       </div>
