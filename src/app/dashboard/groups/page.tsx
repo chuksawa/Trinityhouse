@@ -38,6 +38,7 @@ function getTypeBadgeClass(type: Group["type"]): string {
 
 export default function GroupsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<GroupType>("all");
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
@@ -64,19 +65,32 @@ export default function GroupsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Groups & Teams</h1>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 sm:w-64">
-            <Search
-              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              placeholder="Search groups..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-9"
-            />
-          </div>
+          {searchOpen ? (
+            <div className="relative flex-1 sm:w-64">
+              <Search
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                aria-hidden="true"
+              />
+              <input
+                autoFocus
+                type="search"
+                placeholder="Search groups..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={() => setSearchOpen(false)}
+                className="input pl-9"
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              title="Search groups"
+              className="flex shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white p-2.5 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+          )}
           <button type="button" className="btn-primary whitespace-nowrap">
             <Plus className="h-4 w-4" />
             Create Group

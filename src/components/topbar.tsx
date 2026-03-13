@@ -229,19 +229,17 @@ export default function Topbar() {
           </div>
         ) : (
           <button
+            type="button"
             onClick={() => setSearchOpen(true)}
+            title="Search people, groups, events"
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+              "flex shrink-0 items-center justify-center rounded-lg p-2 transition-colors",
               dark
-                ? "bg-white/10 text-gray-400 hover:bg-white/15 hover:text-gray-300"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                ? "text-gray-400 hover:bg-white/10 hover:text-white"
+                : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
             )}
           >
-            <Search className="h-4 w-4" />
-            <span>Search…</span>
-            <kbd className={cn("ml-8 hidden rounded px-1.5 py-0.5 text-[10px] font-medium sm:inline", dark ? "border border-gray-600 bg-white/10 text-gray-500" : "border border-gray-300 bg-white text-gray-400")}>
-              ⌘K
-            </kbd>
+            <Search className="h-5 w-5" />
           </button>
         )}
       </div>
