@@ -6,7 +6,14 @@ import { Pool } from "pg";
  * Set DATABASE_URL in .env to the same connection string as Viggil (see Credentials_And_Keys.md).
  */
 const connStr = (process.env.DATABASE_URL ?? "").trim();
-const url = connStr ? new URL(connStr) : null;
+let url: URL | null = null;
+if (connStr && (connStr.startsWith("postgresql://") || connStr.startsWith("postgres://"))) {
+  try {
+    url = new URL(connStr);
+  } catch {
+    url = null;
+  }
+}
 
 const pool = url
   ? new Pool({
