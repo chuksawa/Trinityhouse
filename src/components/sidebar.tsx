@@ -5,36 +5,18 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   Church,
-  LayoutDashboard,
-  Users,
-  UsersRound,
-  CalendarDays,
-  Heart,
-  MessageSquare,
-  BookOpen,
-  Settings,
   Shield,
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Home,
+  PanelTop,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useLayoutMode } from "@/contexts/layout-mode-context";
+import { dashboardNavItems, dashboardBottomItems } from "@/lib/dashboard-nav";
 
-const navItems = [
-  { href: "/home", label: "Home", icon: Home },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/people", label: "People & Care", icon: Users },
-  { href: "/dashboard/groups", label: "Groups & Teams", icon: UsersRound },
-  { href: "/dashboard/events", label: "Events", icon: CalendarDays },
-  { href: "/dashboard/giving", label: "Giving", icon: Heart },
-  { href: "/dashboard/communication", label: "Communication", icon: MessageSquare },
-  { href: "/dashboard/content", label: "Content", icon: BookOpen },
-];
-
-const bottomItems = [
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
-];
+const navItems = dashboardNavItems;
+const bottomItems = dashboardBottomItems;
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
@@ -72,6 +54,9 @@ export default function Sidebar() {
 
   const visibleNavItems = allowedHrefs === null ? navItems : navItems.filter((item) => allowedHrefs.includes(item.href));
   const visibleBottomItems = allowedHrefs === null ? bottomItems : bottomItems.filter((item) => allowedHrefs.includes(item.href));
+
+  const { layoutMode, setLayoutMode } = useLayoutMode();
+  if (layoutMode === "topbar") return null;
 
   async function handleSignOut() {
     await fetch(`${BASE_PATH}/api/auth/logout/`, { method: "POST", credentials: "include" });
@@ -185,6 +170,15 @@ export default function Sidebar() {
               <span>Collapse</span>
             </>
           )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setLayoutMode("topbar")}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-300"
+          title="Switch to top bar navigation"
+        >
+          <PanelTop className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Top bar</span>}
         </button>
       </div>
     </aside>

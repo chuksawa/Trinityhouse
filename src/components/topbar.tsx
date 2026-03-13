@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Search, Home, Settings, CalendarDays } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Bell, Search, Home, Settings, CalendarDays, PanelTop, PanelLeft, Shield } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { cn } from "@/lib/utils";
+import { useLayoutMode } from "@/contexts/layout-mode-context";
+import { dashboardNavItems, dashboardBottomItems } from "@/lib/dashboard-nav";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const DEFAULT_USER_NAV = ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"];
 
 type NotificationItem = { id: string; title: string; body: string; read: boolean; createdAt: string };
 type SessionUser = { email?: string; role?: string } | null;
@@ -27,18 +32,40 @@ function formatRole(role: string): string {
 }
 
 export default function Topbar() {
+  const pathname = usePathname();
+  const { layoutMode, toggleLayoutMode } = useLayoutMode();
   const [searchOpen, setSearchOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [user, setUser] = useState<SessionUser>(null);
+  const [navVisibility, setNavVisibility] = useState<Record<string, string[]>>({});
   const bellRef = useRef<HTMLDivElement>(null);
+
+  const isAdmin = user?.role === "superuser" || user?.role === "admin";
+  const allowedHrefs =
+    isAdmin
+      ? null
+      : (user?.role && navVisibility[user.role]) ?? DEFAULT_USER_NAV;
+  const visibleNavItems =
+    allowedHrefs === null
+      ? dashboardNavItems
+      : dashboardNavItems.filter((item) => allowedHrefs.includes(item.href));
+  const visibleBottomItems =
+    allowedHrefs === null
+      ? dashboardBottomItems
+      : dashboardBottomItems.filter((item) => allowedHrefs.includes(item.href));
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${BASE_PATH}/api/auth/session/`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { user: null }))
-      .then((data) => {
-        if (!cancelled) setUser(data.user ?? null);
+    Promise.all([
+      fetch(`${BASE_PATH}/api/auth/session/`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { user: null })),
+      fetch(`${BASE_PATH}/api/settings/nav-visibility`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { navVisibility: {} })),
+    ])
+      .then(([session, config]) => {
+        if (!cancelled) {
+          setUser(session.user ?? null);
+          setNavVisibility(config.navVisibility ?? {});
+        }
       })
       .catch(() => {
         if (!cancelled) setUser(null);
@@ -73,25 +100,86 @@ export default function Topbar() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const isTopbarMode = layoutMode === "topbar";
+
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-gray-200 bg-white/80 px-6 backdrop-blur-sm">
-      <div className="flex items-center gap-4">
-        <Link
-          href="/home"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          title="Back to public site"
-        >
-          <Home className="h-4 w-4" />
-          <span className="hidden sm:inline">Home</span>
-        </Link>
-        <Link
-          href="/events"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          title="Public events"
-        >
-          <CalendarDays className="h-4 w-4" />
-          <span className="hidden sm:inline">Events</span>
-        </Link>
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-gray-200 bg-white/80 px-6 backdrop-blur-sm">
+      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-thin sm:gap-2">
+        {isTopbarMode ? (
+          <>
+            {visibleNavItems.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/dashboard" && pathname?.startsWith(item.href));
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors sm:px-3",
+                    isActive
+                      ? "bg-brand-100 text-brand-700"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="hidden lg:inline">{item.label}</span>
+                </Link>
+              );
+            })}
+            {visibleBottomItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors sm:px-3",
+                    isActive
+                      ? "bg-brand-100 text-brand-700"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="hidden lg:inline">{item.label}</span>
+                </Link>
+              );
+            })}
+            {user?.role === "superuser" && (
+              <Link
+                href="/dashboard/admin"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors sm:px-3",
+                  pathname?.startsWith("/dashboard/admin")
+                    ? "bg-brand-100 text-brand-700"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                )}
+              >
+                <Shield className="h-4 w-4 shrink-0" />
+                <span className="hidden lg:inline">Admin</span>
+              </Link>
+            )}
+          </>
+        ) : (
+          <>
+            <Link
+              href="/home"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              title="Back to public site"
+            >
+              <Home className="h-4 w-4" />
+              <span className="hidden sm:inline">Home</span>
+            </Link>
+            <Link
+              href="/events"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              title="Public events"
+            >
+              <CalendarDays className="h-4 w-4" />
+              <span className="hidden sm:inline">Events</span>
+            </Link>
+          </>
+        )}
         {searchOpen ? (
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-gray-400" />
@@ -117,7 +205,19 @@ export default function Topbar() {
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          onClick={toggleLayoutMode}
+          className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          title={isTopbarMode ? "Switch to side bar navigation" : "Switch to top bar navigation"}
+        >
+          {isTopbarMode ? (
+            <PanelLeft className="h-5 w-5" />
+          ) : (
+            <PanelTop className="h-5 w-5" />
+          )}
+        </button>
         <div className="relative" ref={bellRef}>
           <button
             type="button"
