@@ -37,7 +37,7 @@ export default function HomePage() {
         <img
           src="/trinityhouse/pastor-hero.png"
           alt="Trinity House — teaching and worship"
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          className="absolute inset-0 h-full w-full object-cover object-[center_35%]"
           fetchPriority="high"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-brand-950/95 via-brand-900/75 to-brand-950/50" />
