@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Search, Home, Settings, CalendarDays, PanelTop, PanelLeft, Shield } from "lucide-react";
+import { Bell, Search, Home, Settings, CalendarDays, PanelTop, PanelLeft, Shield, Church } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useLayoutMode } from "@/contexts/layout-mode-context";
@@ -115,6 +115,18 @@ export default function Topbar() {
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-thin sm:gap-2">
         {isTopbarMode ? (
           <>
+            <Link
+              href="/home"
+              className="mr-2 flex shrink-0 items-center gap-2.5 border-r border-gray-700 pr-4 transition-colors hover:opacity-90"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white">
+                <Church className="h-5 w-5" />
+              </div>
+              <div className="hidden overflow-hidden sm:block">
+                <p className="text-sm font-bold leading-tight text-white">Trinity House</p>
+                <p className="text-[10px] font-medium uppercase tracking-widest text-brand-300">Church Hub</p>
+              </div>
+            </Link>
             {visibleNavItems.map((item) => {
               const isActive =
                 pathname === item.href ||
