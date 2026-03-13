@@ -71,10 +71,10 @@ export default function Sidebar() {
         collapsed ? "w-[72px]" : "w-64"
       )}
     >
-      {/* Logo — same as homepage */}
+      {/* Logo — same height as topbar (h-20) so the divider lines up */}
       <Link
         href="/home"
-        className="flex h-16 items-center gap-3 border-b border-gray-800 px-4 transition-colors hover:bg-white/5"
+        className="flex h-20 items-center gap-3 border-b border-gray-800 px-4 transition-colors hover:bg-white/5"
       >
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white">
           <Church className="h-5 w-5" />
