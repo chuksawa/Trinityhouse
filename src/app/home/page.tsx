@@ -14,6 +14,7 @@ import {
 import { sermons } from "@/lib/data";
 import PublicEventsBlock from "@/components/public-events-block";
 import PublicHeader from "@/components/public-header";
+import { SiteFooterCredit } from "@/components/site-footer";
 
 const SERVICE_TIMES = [
   { day: "Sunday", times: "9:00 AM & 11:00 AM", label: "Worship" },
@@ -307,7 +308,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="mt-10 border-t border-white/10 pt-8 text-center text-sm text-slate-400">
-            &copy; {new Date().getFullYear()} Trinity House Church. All rights reserved.
+            <SiteFooterCredit />
           </div>
         </div>
       </footer>

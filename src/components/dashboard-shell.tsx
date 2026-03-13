@@ -2,6 +2,7 @@
 
 import Sidebar from "@/components/sidebar";
 import Topbar from "@/components/topbar";
+import { SiteFooterMinimal } from "@/components/site-footer";
 import { LayoutModeProvider, useLayoutMode } from "@/contexts/layout-mode-context";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       >
         <Topbar />
         <main className="flex-1 p-6">{children}</main>
+        <SiteFooterMinimal />
       </div>
     </div>
   );

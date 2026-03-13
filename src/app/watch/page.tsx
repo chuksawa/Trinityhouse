@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Play, ArrowLeft } from "lucide-react";
 import PublicHeader from "@/components/public-header";
+import { SiteFooterMinimal } from "@/components/site-footer";
 import { formatDate } from "@/lib/utils";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
@@ -135,6 +136,7 @@ export default function PublicWatchPage() {
           </div>
         )}
       </main>
+      <SiteFooterMinimal />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { Church, User, Users } from "lucide-react";
 import Link from "next/link";
+import { SiteFooterMinimal } from "@/components/site-footer";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -63,7 +64,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col">
+      <div className="flex flex-1">
       {/* Left panel — branding */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-brand-950 p-12 lg:flex">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-brand-600/30 via-transparent to-transparent" />
@@ -253,6 +255,8 @@ export default function RegisterPage() {
           </p>
         </div>
       </div>
+      </div>
+      <SiteFooterMinimal />
     </div>
   );
 }
