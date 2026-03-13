@@ -79,3 +79,19 @@
     display: none;
   }
 }
+
+/* Occasional shimmer across pastor name (runs every 10s) */
+@keyframes pastor-name-shimmer {
+  0%, 95% {
+    left: -6rem;
+  }
+  98% {
+    left: 100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+.pastor-name-shimmer {
+  animation: pastor-name-shimmer 10s ease-in-out infinite;
+}
