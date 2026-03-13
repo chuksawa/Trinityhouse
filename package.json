@@ -8,10 +8,13 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "tsx scripts/run-migration.ts",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "db:seed-auth": "tsx scripts/seed-auth.ts"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
+    "jose": "^5.9.6",
     "lucide-react": "^0.460.0",
     "pg": "^8.13.1",
     "next": "^14.2.18",
@@ -21,6 +24,7 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.11.10",
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.12",

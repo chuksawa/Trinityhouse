@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -34,9 +34,18 @@ const bottomItems = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+
+  async function handleSignOut() {
+    await fetch(`${BASE_PATH}/api/auth/logout`, { method: "POST", credentials: "include" });
+    router.push(`${BASE_PATH}/login/`);
+    router.refresh();
+  }
 
   return (
     <aside
@@ -111,13 +120,14 @@ export default function Sidebar() {
             </Link>
           );
         })}
-        <Link
-          href="/login"
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
         >
           <LogOut className="h-5 w-5 shrink-0" />
           {!collapsed && <span>Sign Out</span>}
-        </Link>
+        </button>
 
         <button
           onClick={() => setCollapsed(!collapsed)}

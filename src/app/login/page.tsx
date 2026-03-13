@@ -2,11 +2,42 @@
 
 import { Church } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE_PATH}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Sign in failed");
+        setLoading(false);
+        return;
+      }
+      router.push(`${BASE_PATH}/dashboard/`);
+      router.refresh();
+    } catch {
+      setError("Sign in failed");
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -79,12 +110,12 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-            }}
-            className="space-y-5"
-          >
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Email address
@@ -95,6 +126,8 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="david@trinityhouse.org"
                 className="input"
+                required
+                autoComplete="email"
               />
             </div>
             <div>
@@ -107,6 +140,8 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="input"
+                required
+                autoComplete="current-password"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -121,9 +156,13 @@ export default function LoginPage() {
                 Forgot password?
               </Link>
             </div>
-            <Link href="/dashboard" className="btn-primary w-full text-center block">
-              Sign In
-            </Link>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full"
+            >
+              {loading ? "Signing in…" : "Sign In"}
+            </button>
           </form>
 
           <p className="text-center text-sm text-gray-500">
