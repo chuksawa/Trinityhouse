@@ -78,10 +78,10 @@ export default function HomePage() {
             </Link>
           </div>
           <p
-            className="relative mt-8 w-full max-w-6xl px-4 pr-[calc(1rem+225px)] text-right text-xl font-semibold tracking-wide text-brand-200/40 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+            className="relative mt-8 w-full max-w-6xl px-4 pr-[calc(1rem+225px)] text-right text-xl font-semibold tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
             style={{ textShadow: "0 0 24px rgba(180,160,120,0.4)" }}
           >
-            <span className="relative inline-block">
+            <span className="pastor-name-reveal relative inline-block text-brand-200/40">
               Pastor Ituah Ighodalo
               <span
                 className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -91,6 +91,12 @@ export default function HomePage() {
                   className="pastor-name-shimmer absolute inset-y-0 w-24 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.18)_50%,transparent_100%)]"
                   style={{ left: "-6rem" }}
                 />
+              </span>
+              <span
+                className="pastor-name-flash pointer-events-none absolute inset-0 flex items-center justify-end text-brand-100/90"
+                aria-hidden
+              >
+                Pastor Ituah Ighodalo
               </span>
             </span>
           </p>

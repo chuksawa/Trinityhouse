@@ -95,3 +95,42 @@
 .pastor-name-shimmer {
   animation: pastor-name-shimmer 10s ease-in-out infinite;
 }
+
+/* After shimmer passes: flash name twice, turn off, slow fade back in (same 10s cycle) */
+@keyframes pastor-name-flash {
+  0%, 94% {
+    opacity: 0;
+  }
+  95%, 95.5% {
+    opacity: 1;
+  }
+  96%, 96.5% {
+    opacity: 0;
+  }
+  97%, 97.5% {
+    opacity: 1;
+  }
+  98%, 100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pastor-name-reveal {
+  0%, 97% {
+    opacity: 1;
+  }
+  98% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.pastor-name-flash {
+  animation: pastor-name-flash 10s ease-in-out infinite;
+}
+
+.pastor-name-reveal {
+  animation: pastor-name-reveal 10s ease-in-out infinite;
+}
