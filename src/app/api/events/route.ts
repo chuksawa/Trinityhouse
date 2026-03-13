@@ -18,7 +18,7 @@ export async function GET() {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
   try {
-    const { rows } = await query<{
+    type Row = {
       id: string;
       title: string;
       type: string;
@@ -32,14 +32,31 @@ export async function GET() {
       description: string | null;
       teams: string[];
       show_public: boolean | null;
-      recurrence_type: string | null;
-      recurrence_end_date: string | null;
-    }>(
-      `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, checked_in, description,
-              COALESCE(teams, '{}') AS teams, show_public,
-              recurrence_type, recurrence_end_date::text
-       FROM events ORDER BY date ASC, time ASC`
-    );
+      recurrence_type?: string | null;
+      recurrence_end_date?: string | null;
+    };
+    let rows: Row[];
+    try {
+      const result = await query<Row>(
+        `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, checked_in, description,
+                COALESCE(teams, '{}') AS teams, show_public,
+                recurrence_type, recurrence_end_date::text
+         FROM events ORDER BY date ASC, time ASC`
+      );
+      rows = result.rows;
+    } catch (colErr: unknown) {
+      const m = colErr instanceof Error ? colErr.message : String(colErr);
+      if (m.includes("recurrence_type") || m.includes("recurrence_end_date") || m.includes("does not exist")) {
+        const result = await query<Row>(
+          `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, checked_in, description,
+                  COALESCE(teams, '{}') AS teams, show_public
+           FROM events ORDER BY date ASC, time ASC`
+        );
+        rows = result.rows;
+      } else {
+        throw colErr;
+      }
+    }
     const events = rows.map((r) => ({
       id: r.id,
       title: r.title,
@@ -60,7 +77,7 @@ export async function GET() {
     return NextResponse.json({ events });
   } catch (e) {
     console.error("[events GET]", e);
-    return NextResponse.json({ error: "Failed to load events" }, { status: 500 });
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to load events" }, { status: 500 });
   }
 }
 
@@ -88,19 +105,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Title, date, and time are required" }, { status: 400 });
     }
 
-    await query(
-      `INSERT INTO events (id, title, type, date, time, end_time, location, capacity, description, teams, show_public, recurrence_type, recurrence_end_date, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
-       ON CONFLICT (id) DO UPDATE SET
-         title = EXCLUDED.title, type = EXCLUDED.type, date = EXCLUDED.date, time = EXCLUDED.time,
-         end_time = EXCLUDED.end_time, location = EXCLUDED.location, capacity = EXCLUDED.capacity,
-         description = EXCLUDED.description, teams = EXCLUDED.teams, show_public = EXCLUDED.show_public,
-         recurrence_type = EXCLUDED.recurrence_type, recurrence_end_date = EXCLUDED.recurrence_end_date, updated_at = NOW()`,
-      [id, title, type, date, time, endTime, location, capacity, description, teams, showPublic, recurrenceType, recurrenceEndDate]
-    );
-    return NextResponse.json({ ok: true, id });
+    const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Failed to save event");
+
+    try {
+      await query(
+        `INSERT INTO events (id, title, type, date, time, end_time, location, capacity, description, teams, show_public, recurrence_type, recurrence_end_date, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+         ON CONFLICT (id) DO UPDATE SET
+           title = EXCLUDED.title, type = EXCLUDED.type, date = EXCLUDED.date, time = EXCLUDED.time,
+           end_time = EXCLUDED.end_time, location = EXCLUDED.location, capacity = EXCLUDED.capacity,
+           description = EXCLUDED.description, teams = EXCLUDED.teams, show_public = EXCLUDED.show_public,
+           recurrence_type = EXCLUDED.recurrence_type, recurrence_end_date = EXCLUDED.recurrence_end_date, updated_at = NOW()`,
+        [id, title, type, date, time, endTime, location, capacity, description, teams, showPublic, recurrenceType, recurrenceEndDate]
+      );
+      return NextResponse.json({ ok: true, id });
+    } catch (first: unknown) {
+      const msg = errMsg(first);
+      if (typeof msg === "string" && (msg.includes("recurrence_type") || msg.includes("recurrence_end_date") || msg.includes("does not exist"))) {
+        try {
+          await query(
+            `INSERT INTO events (id, title, type, date, time, end_time, location, capacity, description, teams, show_public, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+             ON CONFLICT (id) DO UPDATE SET
+               title = EXCLUDED.title, type = EXCLUDED.type, date = EXCLUDED.date, time = EXCLUDED.time,
+               end_time = EXCLUDED.end_time, location = EXCLUDED.location, capacity = EXCLUDED.capacity,
+               description = EXCLUDED.description, teams = EXCLUDED.teams, show_public = EXCLUDED.show_public, updated_at = NOW()`,
+            [id, title, type, date, time, endTime, location, capacity, description, teams, showPublic]
+          );
+          return NextResponse.json({ ok: true, id });
+        } catch (second: unknown) {
+          console.error("[events POST]", second);
+          return NextResponse.json({ error: errMsg(second) }, { status: 500 });
+        }
+      }
+      console.error("[events POST]", first);
+      return NextResponse.json({ error: msg }, { status: 500 });
+    }
   } catch (e) {
     console.error("[events POST]", e);
-    return NextResponse.json({ error: "Failed to save event" }, { status: 500 });
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to save event" }, { status: 500 });
   }
 }

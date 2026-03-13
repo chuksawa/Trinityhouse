@@ -66,30 +66,49 @@ function expandRecurrence(
   return dates;
 }
 
+type EventRow = {
+  id: string;
+  title: string;
+  type: string;
+  date: string;
+  time: string;
+  end_time: string | null;
+  location: string | null;
+  capacity: number;
+  registered: number;
+  description: string | null;
+  show_public: boolean;
+  recurrence_type?: string | null;
+  recurrence_end_date?: string | null;
+};
+
 /** Public list of events (no auth). Only future events with show_public = true. Recurring events expanded. */
 export async function GET() {
   try {
-    const { rows } = await query<{
-      id: string;
-      title: string;
-      type: string;
-      date: string;
-      time: string;
-      end_time: string | null;
-      location: string | null;
-      capacity: number;
-      registered: number;
-      description: string | null;
-      show_public: boolean;
-      recurrence_type: string | null;
-      recurrence_end_date: string | null;
-    }>(
-      `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, description, show_public,
-              recurrence_type, recurrence_end_date::text
-       FROM events
-       WHERE date >= CURRENT_DATE AND (show_public IS NULL OR show_public = true)
-       ORDER BY date ASC, time ASC`
-    );
+    let rows: EventRow[];
+    try {
+      const result = await query<EventRow>(
+        `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, description, show_public,
+                recurrence_type, recurrence_end_date::text
+         FROM events
+         WHERE date >= CURRENT_DATE AND (show_public IS NULL OR show_public = true)
+         ORDER BY date ASC, time ASC`
+      );
+      rows = result.rows;
+    } catch (colErr: unknown) {
+      const m = colErr instanceof Error ? colErr.message : String(colErr);
+      if (m.includes("recurrence_type") || m.includes("recurrence_end_date") || m.includes("does not exist")) {
+        const result = await query<EventRow>(
+          `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, description, show_public
+           FROM events
+           WHERE date >= CURRENT_DATE AND (show_public IS NULL OR show_public = true)
+           ORDER BY date ASC, time ASC`
+        );
+        rows = result.rows;
+      } else {
+        throw colErr;
+      }
+    }
     const today = toDateStr(new Date());
     const instances: { id: string; title: string; type: string; date: string; time: string; endTime?: string; location: string; capacity: number; registered: number; description?: string }[] = [];
     for (const r of rows) {

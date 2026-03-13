@@ -41,16 +41,37 @@ export async function PATCH(
       return NextResponse.json({ error: "Title, date, and time are required" }, { status: 400 });
     }
 
-    await query(
-      `UPDATE events SET title = $1, type = $2, date = $3, time = $4, end_time = $5, location = $6,
-        capacity = $7, description = $8, teams = $9, show_public = $10, recurrence_type = $11, recurrence_end_date = $12, updated_at = NOW()
-       WHERE id = $13`,
-      [title, type, date, time, endTime, location, capacity, description, teams, showPublic, recurrenceType, recurrenceEndDate, id]
-    );
-    return NextResponse.json({ ok: true });
+    const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Failed to update event");
+    try {
+      await query(
+        `UPDATE events SET title = $1, type = $2, date = $3, time = $4, end_time = $5, location = $6,
+          capacity = $7, description = $8, teams = $9, show_public = $10, recurrence_type = $11, recurrence_end_date = $12, updated_at = NOW()
+         WHERE id = $13`,
+        [title, type, date, time, endTime, location, capacity, description, teams, showPublic, recurrenceType, recurrenceEndDate, id]
+      );
+      return NextResponse.json({ ok: true });
+    } catch (first: unknown) {
+      const msg = errMsg(first);
+      if (typeof msg === "string" && (msg.includes("recurrence_type") || msg.includes("recurrence_end_date") || msg.includes("does not exist"))) {
+        try {
+          await query(
+            `UPDATE events SET title = $1, type = $2, date = $3, time = $4, end_time = $5, location = $6,
+              capacity = $7, description = $8, teams = $9, show_public = $10, updated_at = NOW()
+             WHERE id = $11`,
+            [title, type, date, time, endTime, location, capacity, description, teams, showPublic, id]
+          );
+          return NextResponse.json({ ok: true });
+        } catch (second: unknown) {
+          console.error("[events PATCH]", second);
+          return NextResponse.json({ error: errMsg(second) }, { status: 500 });
+        }
+      }
+      console.error("[events PATCH]", first);
+      return NextResponse.json({ error: msg }, { status: 500 });
+    }
   } catch (e) {
     console.error("[events PATCH]", e);
-    return NextResponse.json({ error: "Failed to update event" }, { status: 500 });
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to update event" }, { status: 500 });
   }
 }
 
