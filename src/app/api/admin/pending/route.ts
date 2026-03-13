@@ -13,11 +13,20 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { rows } = await query<{ id: number; email: string; created_at: string }>(
-      "SELECT id, email, created_at::text FROM app_users WHERE COALESCE(status, 'active') = 'pending' ORDER BY created_at ASC"
-    );
+    let rows: { id: number; email: string; created_at: string; registration_type?: string }[];
+    try {
+      const result = await query<{ id: number; email: string; created_at: string; registration_type: string }>(
+        "SELECT id, email, created_at::text, COALESCE(registration_type, 'staff') AS registration_type FROM app_users WHERE COALESCE(status, 'active') = 'pending' ORDER BY created_at ASC"
+      );
+      rows = result.rows;
+    } catch {
+      const result = await query<{ id: number; email: string; created_at: string }>(
+        "SELECT id, email, created_at::text FROM app_users WHERE COALESCE(status, 'active') = 'pending' ORDER BY created_at ASC"
+      );
+      rows = result.rows.map((r) => ({ ...r, registration_type: undefined }));
+    }
     return NextResponse.json({
-      pending: rows.map((r) => ({ id: r.id, email: r.email, requestedAt: r.created_at })),
+      pending: rows.map((r) => ({ id: r.id, email: r.email, requestedAt: r.created_at, registrationType: r.registration_type })),
     });
   } catch (e) {
     console.error("[admin/pending GET]", e);

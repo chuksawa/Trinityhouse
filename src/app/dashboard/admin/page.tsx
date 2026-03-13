@@ -6,7 +6,7 @@ import { Shield, UserCheck, UserX, UserCog } from "lucide-react";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-type PendingItem = { id: number; email: string; requestedAt: string };
+type PendingItem = { id: number; email: string; requestedAt: string; registrationType?: string };
 type UserItem = { id: number; email: string; role: string; status: string; createdAt: string };
 
 export default function AdminPage() {
@@ -161,7 +161,12 @@ export default function AdminPage() {
             {pending.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
-                  <p className="font-medium text-gray-900">{p.email}</p>
+                  <p className="font-medium text-gray-900 flex items-center gap-2">
+                    {p.email}
+                    {p.registrationType === "staff" && (
+                      <span className="rounded bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">Staff</span>
+                    )}
+                  </p>
                   <p className="text-xs text-gray-500">Requested {new Date(p.requestedAt).toLocaleString()}</p>
                 </div>
                 <div className="flex items-center gap-2">

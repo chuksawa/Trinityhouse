@@ -1,14 +1,17 @@
 "use client";
 
-import { Church } from "lucide-react";
+import { Church, User, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
+type RegistrationType = "member" | "staff";
+
 export default function RegisterPage() {
   const router = useRouter();
+  const [registrationType, setRegistrationType] = useState<RegistrationType>("member");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -36,6 +39,7 @@ export default function RegisterPage() {
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           password,
+          registrationType,
         }),
         credentials: "include",
       });
@@ -45,7 +49,12 @@ export default function RegisterPage() {
         setLoading(false);
         return;
       }
-      setSuccessMessage(data.message || "Registration submitted. You'll be able to sign in once an administrator approves your account.");
+      if (data.approved) {
+        router.push(`${BASE_PATH}/dashboard/`);
+        router.refresh();
+        return;
+      }
+      setSuccessMessage(data.message || "Registration submitted. You'll be able to sign in once an administrator approves your staff account.");
       setLoading(false);
     } catch {
       setError("Registration failed");
@@ -120,7 +129,7 @@ export default function RegisterPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Create an account</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Enter your email and choose a password to get started
+              Choose how you&apos;re joining, then enter your details.
             </p>
           </div>
 
@@ -151,6 +160,37 @@ export default function RegisterPage() {
                 {error}
               </div>
             )}
+            <div>
+              <span className="block text-sm font-medium text-gray-700 mb-2">I am registering as</span>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRegistrationType("member")}
+                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-left transition-colors ${
+                    registrationType === "member"
+                      ? "border-brand-600 bg-brand-50 text-brand-900"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <Users className="h-6 w-6" />
+                  <span className="font-semibold">Member</span>
+                  <span className="text-xs opacity-90">I attend or am part of the church family. Instant access.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegistrationType("staff")}
+                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-left transition-colors ${
+                    registrationType === "staff"
+                      ? "border-brand-600 bg-brand-50 text-brand-900"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <User className="h-6 w-6" />
+                  <span className="font-semibold">Staff</span>
+                  <span className="text-xs opacity-90">I serve on staff or in ministry. Approval required.</span>
+                </button>
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Email address
@@ -200,7 +240,7 @@ export default function RegisterPage() {
               disabled={loading}
               className="btn-primary w-full"
             >
-              {loading ? "Submitting…" : "Request account"}
+              {loading ? "Submitting…" : registrationType === "member" ? "Create account" : "Request staff account"}
             </button>
           </form>
           )}
