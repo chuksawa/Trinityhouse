@@ -34,6 +34,8 @@ export async function PATCH(
     const description = (b.description ?? "").toString().trim() || null;
     const teams = Array.isArray(b.teams) ? b.teams : [];
     const showPublic = b.showPublic !== false;
+    const recurrenceType = (b.recurrenceType ?? b.recurrence_type ?? "none").toString().trim() || "none";
+    const recurrenceEndDate = (b.recurrenceEndDate ?? b.recurrence_end_date ?? "").toString().trim() || null;
 
     if (!title || !date || !time) {
       return NextResponse.json({ error: "Title, date, and time are required" }, { status: 400 });
@@ -41,9 +43,9 @@ export async function PATCH(
 
     await query(
       `UPDATE events SET title = $1, type = $2, date = $3, time = $4, end_time = $5, location = $6,
-        capacity = $7, description = $8, teams = $9, show_public = $10, updated_at = NOW()
-       WHERE id = $11`,
-      [title, type, date, time, endTime, location, capacity, description, teams, showPublic, id]
+        capacity = $7, description = $8, teams = $9, show_public = $10, recurrence_type = $11, recurrence_end_date = $12, updated_at = NOW()
+       WHERE id = $13`,
+      [title, type, date, time, endTime, location, capacity, description, teams, showPublic, recurrenceType, recurrenceEndDate, id]
     );
     return NextResponse.json({ ok: true });
   } catch (e) {

@@ -8,6 +8,8 @@ import { cn, formatDate } from "@/lib/utils";
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 type EventType = "service" | "event" | "conference" | "meeting";
+type RecurrenceType = "none" | "daily" | "weekly" | "biweekly" | "monthly" | "yearly";
+
 type DashboardEvent = {
   id: string;
   title: string;
@@ -22,7 +24,18 @@ type DashboardEvent = {
   description?: string;
   teams: string[];
   showPublic: boolean;
+  recurrenceType: RecurrenceType;
+  recurrenceEndDate?: string;
 };
+
+const RECURRENCE_OPTIONS: { value: RecurrenceType; label: string }[] = [
+  { value: "none", label: "Does not repeat" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Every 2 weeks" },
+  { value: "monthly", label: "Monthly" },
+  { value: "yearly", label: "Yearly" },
+];
 
 const TYPE_TABS: { value: "all" | EventType; label: string }[] = [
   { value: "all", label: "All" },
@@ -56,6 +69,8 @@ const emptyForm = {
   capacity: 0,
   description: "",
   showPublic: true,
+  recurrenceType: "none" as RecurrenceType,
+  recurrenceEndDate: "",
 };
 
 export default function EventsPage() {
@@ -117,6 +132,8 @@ export default function EventsPage() {
       capacity: event.capacity,
       description: event.description ?? "",
       showPublic: event.showPublic,
+      recurrenceType: (event.recurrenceType ?? "none") as RecurrenceType,
+      recurrenceEndDate: event.recurrenceEndDate ?? "",
     });
     setSelectedEvent(event);
     setError("");
@@ -142,6 +159,8 @@ export default function EventsPage() {
       capacity: form.capacity,
       description: form.description.trim() || undefined,
       showPublic: form.showPublic,
+      recurrenceType: form.recurrenceType,
+      recurrenceEndDate: form.recurrenceType !== "none" && form.recurrenceEndDate ? form.recurrenceEndDate : undefined,
     };
     if (!payload.title || !payload.date || !payload.time) {
       setError("Title, date, and time are required.");
@@ -263,6 +282,11 @@ export default function EventsPage() {
                       {event.showPublic && (
                         <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700" title="Shown on public site">
                           <Globe className="h-3 w-3 inline" />
+                        </span>
+                      )}
+                      {(event.recurrenceType ?? "none") !== "none" && (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800" title="Recurring">
+                          Repeats {RECURRENCE_OPTIONS.find((o) => o.value === (event.recurrenceType ?? "none"))?.label?.toLowerCase() ?? event.recurrenceType}
                         </span>
                       )}
                       {event.checkedIn > 0 && (
@@ -397,6 +421,32 @@ export default function EventsPage() {
               className="input"
               placeholder="11:30 AM"
             />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Repeats</label>
+              <select
+                value={form.recurrenceType}
+                onChange={(e) => setForm((f) => ({ ...f, recurrenceType: e.target.value as RecurrenceType }))}
+                className="input"
+              >
+                {RECURRENCE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            {form.recurrenceType !== "none" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ends (optional)</label>
+                <input
+                  type="date"
+                  value={form.recurrenceEndDate}
+                  onChange={(e) => setForm((f) => ({ ...f, recurrenceEndDate: e.target.value }))}
+                  className="input"
+                  placeholder="Leave empty for no end"
+                />
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
