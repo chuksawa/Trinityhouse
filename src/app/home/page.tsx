@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { sermons } from "@/lib/data";
 import PublicEventsBlock from "@/components/public-events-block";
+import PublicHeader from "@/components/public-header";
 
 const SERVICE_TIMES = [
   { day: "Sunday", times: "9:00 AM & 11:00 AM", label: "Worship" },
@@ -28,43 +29,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <header className="sticky top-0 z-50 border-b border-gray-200/80 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/home" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-              <Church className="h-5 w-5" />
-            </div>
-            <span className="text-lg font-bold text-gray-900">Trinity House</span>
-          </Link>
-          <nav className="flex items-center gap-1 sm:gap-2">
-            <Link
-              href="/home#visit"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            >
-              Visit
-            </Link>
-            <Link
-              href="/events"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            >
-              Events
-            </Link>
-            <Link
-              href="/home#watch"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            >
-              Watch
-            </Link>
-            <Link
-              href="/login"
-              className="btn-primary text-sm"
-            >
-              Sign In
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* Hero — pastor at podium with overlay */}
       <section className="relative h-[70vh] min-h-[420px] overflow-hidden">

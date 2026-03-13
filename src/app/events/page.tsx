@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Church, Calendar, Clock, MapPin, ArrowLeft } from "lucide-react";
+import { Calendar, Clock, MapPin, ArrowLeft } from "lucide-react";
+import PublicHeader from "@/components/public-header";
 import { formatDate, formatDateShort } from "@/lib/utils";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
@@ -66,27 +67,7 @@ export default function PublicEventsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-50 border-b border-gray-200/80 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/home" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-              <Church className="h-5 w-5" />
-            </div>
-            <span className="text-lg font-bold text-gray-900">Trinity House</span>
-          </Link>
-          <nav className="flex items-center gap-1 sm:gap-2">
-            <Link href="/home" className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">
-              Home
-            </Link>
-            <Link href="/home#events" className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900">
-              Events
-            </Link>
-            <Link href="/login" className="btn-primary text-sm">
-              Sign In
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
         <Link href="/home" className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700">
