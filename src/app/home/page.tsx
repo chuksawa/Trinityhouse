@@ -81,7 +81,7 @@ export default function HomePage() {
             className="relative mt-8 w-full max-w-6xl px-4 pr-[calc(1rem+225px)] text-right text-base font-semibold tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
             style={{ textShadow: "0 0 24px rgba(180,160,120,0.4)" }}
           >
-            <span className="pastor-name-reveal relative inline-block text-brand-200/40">
+            <span className="pastor-name-reveal relative inline-block px-[1ch] text-brand-200/40">
               Pastor Ituah Ighodalo
               <span
                 className="pointer-events-none absolute inset-0 overflow-hidden"
