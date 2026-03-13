@@ -106,10 +106,8 @@ export default function Topbar() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-20 flex h-20 items-center justify-between gap-4 border-b px-6 transition-colors",
-        dark
-          ? "border-gray-800 bg-slate-900"
-          : "border-gray-200 bg-white/80 backdrop-blur-sm"
+        "sticky top-0 z-20 flex h-20 items-center justify-between gap-4 px-6 transition-colors",
+        dark ? "bg-slate-900" : "bg-white/80 backdrop-blur-sm"
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-thin sm:gap-2">
