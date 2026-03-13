@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   Church,
-  Cross,
   MapPin,
   Clock,
   Heart,
@@ -52,7 +51,12 @@ export default function HomePage() {
             One church.
             <br />
             One family.
-            <Cross className="ml-2 inline-block h-[0.85em] w-[0.85em] shrink-0 align-middle text-white" strokeWidth={2.5} aria-hidden />
+            <span className="ml-2 inline-block h-[0.9em] w-[0.4em] align-middle" aria-hidden>
+              <svg viewBox="0 0 24 56" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-full w-full text-white">
+                <line x1="12" y1="0" x2="12" y2="56" />
+                <line x1="2" y1="14" x2="22" y2="14" />
+              </svg>
+            </span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-brand-100">
             Whether you&apos;re new here, part of our congregation, or on staff — you belong. Connect, grow, and serve with us.
