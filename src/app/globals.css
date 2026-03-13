@@ -80,12 +80,12 @@
   }
 }
 
-/* Occasional shimmer across pastor name (runs every 10s) */
+/* Occasional shimmer across pastor name (runs every 10s; pass is ~4s) */
 @keyframes pastor-name-shimmer {
-  0%, 95% {
+  0%, 55% {
     left: -6rem;
   }
-  98% {
+  95% {
     left: 100%;
   }
   100% {
