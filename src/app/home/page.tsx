@@ -88,7 +88,7 @@ export default function HomePage() {
                 aria-hidden
               >
                 <span
-                  className="pastor-name-shimmer absolute inset-y-0 w-24 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.4)_50%,transparent_100%)]"
+                  className="pastor-name-shimmer absolute inset-y-0 w-24 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.18)_50%,transparent_100%)]"
                   style={{ left: "-6rem" }}
                 />
               </span>
