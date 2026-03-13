@@ -29,7 +29,7 @@ export default function DashboardGuard({ children }: { children: React.ReactNode
         const allowed = (role && config.navVisibility?.[role]) ?? DEFAULT_USER_NAV;
         const path = pathname?.replace(new RegExp(`^${BASE_PATH}`), "") || "";
         const allowedPath = allowed.some(
-          (href) => path === href || (href !== "/dashboard" && path.startsWith(href + "/"))
+          (href: string) => path === href || (href !== "/dashboard" && path.startsWith(href + "/"))
         );
         if (!allowedPath) {
           router.replace(`${BASE_PATH}/dashboard`);
