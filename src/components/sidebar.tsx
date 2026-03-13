@@ -38,22 +38,40 @@ const bottomItems = [
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
+const DEFAULT_USER_NAV = ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"];
+
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
-  const [isSuperuser, setIsSuperuser] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [navVisibility, setNavVisibility] = useState<Record<string, string[]>>({});
+
+  const isSuperuser = userRole === "superuser";
+  const isAdmin = userRole === "superuser" || userRole === "admin";
+  const allowedHrefs =
+    isAdmin
+      ? null
+      : (userRole && navVisibility[userRole]) ?? DEFAULT_USER_NAV;
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${BASE_PATH}/api/auth/session/`, { credentials: "include" })
-      .then((r) => r.ok ? r.json() : { user: null })
-      .then((data) => {
-        if (!cancelled) setIsSuperuser(data.user?.role === "superuser");
+    Promise.all([
+      fetch(`${BASE_PATH}/api/auth/session/`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { user: null })),
+      fetch(`${BASE_PATH}/api/settings/nav-visibility`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { navVisibility: {} })),
+    ])
+      .then(([session, config]) => {
+        if (!cancelled) {
+          setUserRole(session.user?.role ?? null);
+          setNavVisibility(config.navVisibility ?? {});
+        }
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  const visibleNavItems = allowedHrefs === null ? navItems : navItems.filter((item) => allowedHrefs.includes(item.href));
+  const visibleBottomItems = allowedHrefs === null ? bottomItems : bottomItems.filter((item) => allowedHrefs.includes(item.href));
 
   async function handleSignOut() {
     await fetch(`${BASE_PATH}/api/auth/logout/`, { method: "POST", credentials: "include" });
@@ -90,7 +108,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-3 scrollbar-thin">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -128,7 +146,7 @@ export default function Sidebar() {
             {!collapsed && <span>Admin</span>}
           </Link>
         )}
-        {bottomItems.map((item) => {
+        {visibleBottomItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link

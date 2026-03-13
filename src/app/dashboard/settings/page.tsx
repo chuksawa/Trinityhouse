@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Church, Shield, Bell, Palette, Database, Globe } from "lucide-react";
+import { Church, Shield, Bell, Palette, Database, Globe, Eye } from "lucide-react";
 
 const sections: { title: string; description: string; icon: typeof Church; href?: string }[] = [
+  {
+    title: "Dashboard visibility",
+    description: "Choose which dashboard pages each role can see (e.g. Members).",
+    icon: Eye,
+    href: "/dashboard/settings/visibility",
+  },
   {
     title: "Church Profile",
     description: "Name, address, service times, and public-facing information.",
