@@ -1,37 +1,44 @@
 "use client";
 
+import Link from "next/link";
 import { Church, Shield, Bell, Palette, Database, Globe } from "lucide-react";
 
-const sections = [
+const sections: { title: string; description: string; icon: typeof Church; href?: string }[] = [
   {
     title: "Church Profile",
     description: "Name, address, service times, and public-facing information.",
     icon: Church,
+    href: "/dashboard/settings/profile",
   },
   {
     title: "Roles & Permissions",
     description: "Control who can access each module and what actions they can take.",
     icon: Shield,
+    href: "/dashboard/settings/roles",
   },
   {
     title: "Notifications",
     description: "Configure email, SMS, and push notification preferences.",
     icon: Bell,
+    href: "/dashboard/settings/notifications",
   },
   {
     title: "Appearance",
     description: "Customize colors, logo, and branding for the app.",
     icon: Palette,
+    // href omitted — coming later
   },
   {
     title: "Data & Integrations",
     description: "Import/export data, connect third-party services, and manage API keys.",
     icon: Database,
+    href: "/dashboard/settings/data",
   },
   {
     title: "Website & Public Pages",
     description: "Manage your church website, event pages, and public sermon archive.",
     icon: Globe,
+    href: "/dashboard/settings/website",
   },
 ];
 
@@ -46,20 +53,37 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {sections.map((s) => (
-          <button
-            key={s.title}
-            className="card flex items-start gap-4 p-5 text-left transition-shadow hover:shadow-md"
-          >
-            <div className="rounded-lg bg-brand-50 p-2.5 text-brand-600">
-              <s.icon className="h-5 w-5" />
+        {sections.map((s) =>
+          s.href ? (
+            <Link
+              key={s.title}
+              href={s.href}
+              className="card flex items-start gap-4 p-5 text-left transition-shadow hover:shadow-md"
+            >
+              <div className="rounded-lg bg-brand-50 p-2.5 text-brand-600">
+                <s.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">{s.title}</h3>
+                <p className="mt-1 text-sm text-gray-500">{s.description}</p>
+              </div>
+            </Link>
+          ) : (
+            <div
+              key={s.title}
+              className="card flex items-start gap-4 p-5 text-left opacity-75 cursor-not-allowed"
+              title="Coming later"
+            >
+              <div className="rounded-lg bg-gray-100 p-2.5 text-gray-400">
+                <s.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-500">{s.title}</h3>
+                <p className="mt-1 text-sm text-gray-400">{s.description}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">{s.title}</h3>
-              <p className="mt-1 text-sm text-gray-500">{s.description}</p>
-            </div>
-          </button>
-        ))}
+          )
+        )}
       </div>
 
       <div className="card p-6">
