@@ -133,14 +133,14 @@ export default function HomePage() {
       </section>
 
       {/* Where we gather — dim background image */}
-      <section className="relative overflow-hidden bg-slate-900">
+      <section className="relative overflow-hidden bg-slate-700">
         <div className="absolute inset-0">
           <img
             src="/trinityhouse/hero-location.png"
             alt="Trinity House — a place to belong"
-            className="absolute inset-0 h-full w-full object-cover object-center opacity-30"
+            className="absolute inset-0 h-full w-full object-cover object-center opacity-50"
           />
-          <div className="absolute inset-0 bg-brand-950/80" />
+          <div className="absolute inset-0 bg-brand-900/50" />
         </div>
         <div className="relative mx-auto max-w-4xl px-4 py-14 text-center sm:py-16">
           <h2 className="text-3xl font-bold text-white sm:text-4xl">
