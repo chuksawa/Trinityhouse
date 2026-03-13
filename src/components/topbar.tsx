@@ -102,6 +102,7 @@ export default function Topbar() {
 
   const isTopbarMode = layoutMode === "topbar";
   const dark = isTopbarMode;
+  const topbarLabel = (label: string) => label.split(/\s+/)[0];
 
   return (
     <header
@@ -145,7 +146,7 @@ export default function Topbar() {
                   )}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
-                  <span className="hidden lg:inline">{item.label}</span>
+                  <span className="hidden lg:inline">{topbarLabel(item.label)}</span>
                 </Link>
               );
             })}
@@ -167,7 +168,7 @@ export default function Topbar() {
                   )}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
-                  <span className="hidden lg:inline">{item.label}</span>
+                  <span className="hidden lg:inline">{topbarLabel(item.label)}</span>
                 </Link>
               );
             })}
