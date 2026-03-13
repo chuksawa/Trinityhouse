@@ -7,34 +7,46 @@ import { useState } from "react";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch(`${BASE_PATH}/api/auth/login/`, {
+      const res = await fetch(`${BASE_PATH}/api/auth/register/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
         credentials: "include",
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || "Sign in failed");
+        setError(data.error || "Registration failed");
         setLoading(false);
         return;
       }
       router.push(`${BASE_PATH}/dashboard/`);
       router.refresh();
     } catch {
-      setError("Sign in failed");
+      setError("Registration failed");
       setLoading(false);
     }
   }
@@ -56,13 +68,13 @@ export default function LoginPage() {
 
         <div className="relative space-y-6">
           <h2 className="text-4xl font-bold leading-tight text-white">
-            One place to shepherd,
+            Join the family.
             <br />
-            connect, and grow.
+            Create your account.
           </h2>
           <p className="max-w-md text-lg text-brand-200/80">
-            People, groups, giving, events, and discipleship — all in one hub
-            built for your church.
+            Get access to the dashboard — people, groups, events, and more —
+            all in one place.
           </p>
           <div className="flex gap-4 pt-2">
             {[
@@ -104,9 +116,9 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Create an account</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Sign in to your account to continue
+              Enter your email and choose a password to get started
             </p>
           </div>
 
@@ -124,7 +136,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="david@trinityhouse.org"
+                placeholder="you@example.com"
                 className="input"
                 required
                 autoComplete="email"
@@ -138,41 +150,41 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                className="input"
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Confirm password
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 className="input"
                 required
-                autoComplete="current-password"
+                minLength={8}
+                autoComplete="new-password"
               />
-            </div>
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600"
-                />
-                Remember me
-              </label>
-              <Link href="/home" className="text-sm font-medium text-brand-600 hover:text-brand-700">
-                Forgot password?
-              </Link>
             </div>
             <button
               type="submit"
               disabled={loading}
               className="btn-primary w-full"
             >
-              {loading ? "Signing in…" : "Sign In"}
+              {loading ? "Creating account…" : "Create account"}
             </button>
           </form>
 
           <p className="text-center text-sm text-gray-500">
-            New to Trinity House?{" "}
-            <Link href="/register" className="font-medium text-brand-600 hover:text-brand-700">
-              Create an account
-            </Link>
-            {" · "}
-            <Link href="/home#visit" className="font-medium text-brand-600 hover:text-brand-700">
-              Plan a visit
+            Already have an account?{" "}
+            <Link href={`${BASE_PATH}/login/`} className="font-medium text-brand-600 hover:text-brand-700">
+              Sign in
             </Link>
           </p>
         </div>

@@ -108,6 +108,12 @@ export default function HomePage() {
               Sign In to the App
             </Link>
             <Link
+              href="/register"
+              className="inline-flex items-center gap-2 rounded-xl border-2 border-white/30 bg-white/5 px-6 py-3.5 text-base font-semibold text-white/90 backdrop-blur transition-all hover:bg-white/15"
+            >
+              Create account
+            </Link>
+            <Link
               href="/home#give"
               className="inline-flex items-center gap-2 rounded-xl border-2 border-emerald-400/60 bg-emerald-500/20 px-6 py-3.5 text-base font-semibold text-white backdrop-blur transition-all hover:bg-emerald-500/30"
             >
