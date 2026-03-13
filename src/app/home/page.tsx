@@ -55,9 +55,6 @@ export default function HomePage() {
           <p className="mx-auto mt-6 max-w-2xl text-lg text-brand-100">
             Whether you&apos;re new here, part of our congregation, or on staff — you belong. Connect, grow, and serve with us.
           </p>
-          <p className="mt-5 text-xl font-semibold tracking-wide text-white/95 drop-shadow-[0_0_24px_rgba(255,255,255,0.35)]">
-            Pastor Ituah Ighodalo
-          </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/home#visit"
@@ -80,6 +77,12 @@ export default function HomePage() {
               Give
             </Link>
           </div>
+          <p
+            className="mt-8 w-full max-w-6xl px-4 text-right text-xl font-semibold tracking-wide text-brand-200/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+            style={{ textShadow: "0 0 24px rgba(180,160,120,0.4)" }}
+          >
+            Pastor Ituah Ighodalo
+          </p>
         </div>
       </section>
 
