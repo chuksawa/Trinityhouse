@@ -42,7 +42,7 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   async function handleSignOut() {
-    await fetch(`${BASE_PATH}/api/auth/logout`, { method: "POST", credentials: "include" });
+    await fetch(`${BASE_PATH}/api/auth/logout/`, { method: "POST", credentials: "include" });
     router.push(`${BASE_PATH}/login/`);
     router.refresh();
   }
