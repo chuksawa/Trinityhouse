@@ -78,7 +78,7 @@ export default function HomePage() {
             </Link>
           </div>
           <p
-            className="mt-8 w-full max-w-6xl px-4 text-right text-xl font-semibold tracking-wide text-brand-200/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+            className="mt-8 w-full max-w-6xl px-4 pr-[calc(1rem+50px)] text-right text-xl font-semibold tracking-wide text-brand-200/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
             style={{ textShadow: "0 0 24px rgba(180,160,120,0.4)" }}
           >
             Pastor Ituah Ighodalo
