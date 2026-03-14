@@ -93,6 +93,7 @@ export async function POST(req: Request) {
           session = await stripe.checkout.sessions.create({
             ...baseParams,
             payment_method_types: ["card"],
+            ...(isNgn && { locale: "en-NG" as Stripe.Checkout.SessionCreateParams.Locale }),
           });
         } catch (fallbackErr) {
           console.error("[giving/checkout-session] fallback failed", fallbackErr);
