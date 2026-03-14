@@ -4,7 +4,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
-const DEFAULT_USER_NAV = ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"];
+const DEFAULT_NAV_BY_ROLE: Record<string, string[] | null> = {
+  superuser: null,
+  admin: null,
+  senior_staff: ["/home", "/dashboard", "/dashboard/people", "/dashboard/groups", "/dashboard/events", "/dashboard/communication", "/dashboard/content"],
+  staff: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/events", "/dashboard/communication"],
+  user: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"],
+};
 
 /** Redirects non-admin users to /dashboard if they hit a path not in their allowed nav. */
 export default function DashboardGuard({ children }: { children: React.ReactNode }) {
@@ -21,11 +27,12 @@ export default function DashboardGuard({ children }: { children: React.ReactNode
       .then(([session, config]) => {
         if (cancelled) return;
         const role = session.user?.role as string | undefined;
+        const defaultForRole = role ? DEFAULT_NAV_BY_ROLE[role] : undefined;
         const allowed =
           role && config.navVisibility?.[role] !== undefined
             ? config.navVisibility[role]
-            : role === "user"
-              ? DEFAULT_USER_NAV
+            : defaultForRole !== undefined
+              ? defaultForRole
               : null;
         if (allowed === null) {
           setReady(true);

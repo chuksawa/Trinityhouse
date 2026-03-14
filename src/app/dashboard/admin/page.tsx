@@ -137,7 +137,7 @@ export default function AdminPage() {
     }
   }
 
-  async function handleSetRole(userId: number, role: "admin" | "user") {
+  async function handleSetRole(userId: number, role: "admin" | "senior_staff" | "staff" | "user") {
     setActioning(userId);
     try {
       const res = await fetch(`${BASE_PATH}/api/admin/users/${userId}/role/`, {
@@ -255,8 +255,14 @@ export default function AdminPage() {
                 <tr key={u.id}>
                   <td className="table-cell font-medium text-gray-900">{u.email}</td>
                   <td className="table-cell">
-                    <span className={u.role === "superuser" ? "badge-purple" : u.role === "admin" ? "badge-blue" : "badge-gray"}>
-                      {u.role}
+                    <span className={
+                      u.role === "superuser" ? "badge-purple" :
+                      u.role === "admin" ? "badge-blue" :
+                      u.role === "senior_staff" ? "badge-green" :
+                      u.role === "staff" ? "badge-yellow" :
+                      "badge-gray"
+                    }>
+                      {u.role === "senior_staff" ? "Senior Staff" : u.role === "staff" ? "Staff" : u.role}
                     </span>
                     {u.role === "superuser" && (
                       <span className="ml-2 text-xs text-gray-500">(cannot be modified)</span>
@@ -269,25 +275,18 @@ export default function AdminPage() {
                       "—"
                     ) : (
                       <div className="flex items-center justify-end gap-2">
-                        {u.role === "user" ? (
-                          <button
-                            type="button"
-                            onClick={() => handleSetRole(u.id, "admin")}
-                            disabled={actioning !== null}
-                            className="text-sm font-medium text-brand-600 hover:text-brand-700"
-                          >
-                            {actioning === u.id ? "…" : "Elevate to admin"}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleSetRole(u.id, "user")}
-                            disabled={actioning !== null}
-                            className="text-sm font-medium text-gray-600 hover:text-gray-700"
-                          >
-                            {actioning === u.id ? "…" : "Revoke admin"}
-                          </button>
-                        )}
+                        <select
+                          value={u.role}
+                          onChange={(e) => handleSetRole(u.id, e.target.value as "admin" | "senior_staff" | "staff" | "user")}
+                          disabled={actioning !== null}
+                          className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:ring-2 focus:ring-brand-500"
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="senior_staff">Senior Staff</option>
+                          <option value="staff">Staff</option>
+                          <option value="user">Member</option>
+                        </select>
+                        {actioning === u.id && <span className="text-xs text-gray-500">…</span>}
                       </div>
                     )}
                   </td>
@@ -323,12 +322,12 @@ export default function AdminPage() {
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-2">Who can edit which people roles</h3>
               <div className="space-y-3">
-                {["superuser", "admin", "user"].map((appRole) => {
+                {["superuser", "admin", "senior_staff", "staff", "user"].map((appRole) => {
                   const editable = hierarchy.appRoleEditScope[appRole] ?? [];
                   const isSuperuser = appRole === "superuser";
                   return (
                     <div key={appRole} className="flex flex-wrap items-center gap-3">
-                      <span className="w-24 font-medium text-gray-800 capitalize">{appRole}</span>
+                      <span className="w-28 font-medium text-gray-800">{appRole === "senior_staff" ? "Senior Staff" : appRole === "staff" ? "Staff" : appRole}</span>
                       {isSuperuser ? (
                         <span className="text-sm text-gray-500">Can edit all people (fixed)</span>
                       ) : (

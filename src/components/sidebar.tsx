@@ -21,7 +21,13 @@ const bottomItems = dashboardBottomItems;
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-const DEFAULT_USER_NAV = ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"];
+const DEFAULT_NAV_BY_ROLE: Record<string, string[] | null> = {
+  superuser: null,
+  admin: null,
+  senior_staff: ["/home", "/dashboard", "/dashboard/people", "/dashboard/groups", "/dashboard/events", "/dashboard/communication", "/dashboard/content"],
+  staff: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/events", "/dashboard/communication"],
+  user: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"],
+};
 
 type SidebarProps = {
   isMobile?: boolean;
@@ -38,11 +44,12 @@ export default function Sidebar({ isMobile, open = false, onClose, onNavigate }:
   const [navVisibility, setNavVisibility] = useState<Record<string, string[]>>({});
 
   const isSuperuser = userRole === "superuser";
+  const defaultForRole = userRole ? DEFAULT_NAV_BY_ROLE[userRole] : undefined;
   const allowedHrefs =
     userRole && navVisibility[userRole] !== undefined
       ? navVisibility[userRole]
-      : userRole === "user"
-        ? DEFAULT_USER_NAV
+      : defaultForRole !== undefined
+        ? defaultForRole
         : null;
 
   useEffect(() => {

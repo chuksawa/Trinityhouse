@@ -9,7 +9,13 @@ import { useLayoutMode } from "@/contexts/layout-mode-context";
 import { dashboardNavItems, dashboardBottomItems } from "@/lib/dashboard-nav";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
-const DEFAULT_USER_NAV = ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"];
+const DEFAULT_NAV_BY_ROLE: Record<string, string[] | null> = {
+  superuser: null,
+  admin: null,
+  senior_staff: ["/home", "/dashboard", "/dashboard/people", "/dashboard/groups", "/dashboard/events", "/dashboard/communication", "/dashboard/content"],
+  staff: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/events", "/dashboard/communication"],
+  user: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"],
+};
 
 type NotificationItem = { id: string; title: string; body: string; read: boolean; createdAt: string };
 type SessionUser = { email?: string; role?: string } | null;
@@ -28,6 +34,8 @@ function initialsFromEmail(email: string): string {
 function formatRole(role: string): string {
   if (role === "superuser") return "Superuser";
   if (role === "admin") return "Admin";
+  if (role === "senior_staff") return "Senior Staff";
+  if (role === "staff") return "Staff";
   return "User";
 }
 
@@ -46,11 +54,12 @@ export default function Topbar({ onOpenMobileMenu, isMobile }: TopbarProps = {})
   const [navVisibility, setNavVisibility] = useState<Record<string, string[]>>({});
   const bellRef = useRef<HTMLDivElement>(null);
 
+  const defaultForRole = user?.role ? DEFAULT_NAV_BY_ROLE[user.role] : undefined;
   const allowedHrefs =
     user?.role && navVisibility[user.role] !== undefined
       ? navVisibility[user.role]
-      : user?.role === "user"
-        ? DEFAULT_USER_NAV
+      : defaultForRole !== undefined
+        ? defaultForRole
         : null;
   const visibleNavItems =
     allowedHrefs === null

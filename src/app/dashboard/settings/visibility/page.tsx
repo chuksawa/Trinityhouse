@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Shield, UserCog, User } from "lucide-react";
+import { Loader2, Shield, UserCog, User, Users, UserCheck } from "lucide-react";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
@@ -23,12 +23,16 @@ const ALL_HREFS = ALL_PAGES.map((p) => p.href);
 const ROLE_CONFIG: { key: string; label: string; description: string; icon: typeof Shield }[] = [
   { key: "superuser", label: "Superuser", description: "Top-level access. Restrict pages here if needed.", icon: Shield },
   { key: "admin", label: "Admin", description: "Admins who manage the dashboard. Choose which pages they can see.", icon: UserCog },
+  { key: "senior_staff", label: "Senior Staff", description: "Senior staff dashboard access. Choose which pages they can see.", icon: UserCheck },
+  { key: "staff", label: "Staff", description: "Staff dashboard access. Choose which pages they can see.", icon: Users },
   { key: "user", label: "Member (user)", description: "Regular members. Choose which pages they can see.", icon: User },
 ];
 
 const DEFAULT_BY_ROLE: Record<string, string[]> = {
   superuser: [...ALL_HREFS],
   admin: [...ALL_HREFS],
+  senior_staff: ["/home", "/dashboard", "/dashboard/people", "/dashboard/groups", "/dashboard/events", "/dashboard/communication", "/dashboard/content"],
+  staff: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/events", "/dashboard/communication"],
   user: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"],
 };
 
@@ -41,6 +45,8 @@ export default function VisibilitySettingsPage() {
   const [visibility, setVisibility] = useState<Record<string, string[]>>({
     superuser: [...DEFAULT_BY_ROLE.superuser],
     admin: [...DEFAULT_BY_ROLE.admin],
+    senior_staff: [...DEFAULT_BY_ROLE.senior_staff],
+    staff: [...DEFAULT_BY_ROLE.staff],
     user: [...DEFAULT_BY_ROLE.user],
   });
 
@@ -58,6 +64,8 @@ export default function VisibilitySettingsPage() {
         setVisibility({
           superuser: Array.isArray(raw.superuser) ? raw.superuser : [...DEFAULT_BY_ROLE.superuser],
           admin: Array.isArray(raw.admin) ? raw.admin : [...DEFAULT_BY_ROLE.admin],
+          senior_staff: Array.isArray(raw.senior_staff) ? raw.senior_staff : [...DEFAULT_BY_ROLE.senior_staff],
+          staff: Array.isArray(raw.staff) ? raw.staff : [...DEFAULT_BY_ROLE.staff],
           user: Array.isArray(raw.user) ? raw.user : [...DEFAULT_BY_ROLE.user],
         });
       })

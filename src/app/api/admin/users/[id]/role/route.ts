@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { getCookieName, verifyToken } from "@/lib/auth";
 import { query } from "@/lib/db";
 
-/** PATCH: Set a user's role (admin | user). Superuser only. Cannot modify superuser. Body: { role: 'admin' | 'user' } */
+/** PATCH: Set a user's role (admin | senior_staff | staff | user). Superuser only. Cannot modify superuser. */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -24,8 +24,9 @@ export async function PATCH(
 
     const body = await req.json().catch(() => ({}));
     const role = (body.role ?? "").toString().toLowerCase();
-    if (role !== "admin" && role !== "user") {
-      return NextResponse.json({ error: "Role must be 'admin' or 'user'" }, { status: 400 });
+    const allowedRoles = ["admin", "senior_staff", "staff", "user"];
+    if (!allowedRoles.includes(role)) {
+      return NextResponse.json({ error: "Role must be one of: admin, senior_staff, staff, user" }, { status: 400 });
     }
 
     const { rows: target } = await query<{ role: string }>(
