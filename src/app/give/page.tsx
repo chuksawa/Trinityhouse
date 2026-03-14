@@ -111,6 +111,7 @@ export default function GivePage() {
     givingExternalUrl: string;
     textToGivePhone: string;
   }>({ givingExternalUrl: "", textToGivePhone: "" });
+  const [email, setEmail] = useState("");
   const [amount, setAmount] = useState("");
   const [fund, setFund] = useState("offering");
   const [loading, setLoading] = useState(false);
@@ -154,6 +155,11 @@ export default function GivePage() {
   function handlePaystack(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Please enter a valid email address (required for payment receipt).");
+      return;
+    }
     const amountKobo = parsedAmount();
     if (amountKobo < MIN_AMOUNT_NGN * 100) {
       setError(`Minimum amount is ${CURRENCY.symbol}${MIN_AMOUNT_NGN.toLocaleString()}`);
@@ -173,6 +179,7 @@ export default function GivePage() {
       const popup = new window.PaystackPop();
       popup.newTransaction({
         key: PAYSTACK_KEY,
+        email: trimmedEmail,
         amount: amountKobo,
         currency: "NGN",
         channels: ["card", "bank", "ussd", "mobile_money", "bank_transfer", "qr"],
@@ -286,6 +293,18 @@ export default function GivePage() {
           {showMainForm && (
             <>
               <form onSubmit={handlePaystack} className="mt-8 space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    required
+                    className="input mt-1 w-full"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">Your payment receipt will be sent here.</p>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Amount ({CURRENCY.symbol} {CURRENCY.name})
