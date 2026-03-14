@@ -27,6 +27,29 @@ export default function ContentPage() {
   const [loading, setLoading] = useState(true);
   const [selectedSermon, setSelectedSermon] = useState<DashboardSermon | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadSpeaker, setUploadSpeaker] = useState("");
+  const [uploadSeries, setUploadSeries] = useState("");
+  const [uploadDate, setUploadDate] = useState("");
+  const [uploadDuration, setUploadDuration] = useState("");
+  const [uploadDescription, setUploadDescription] = useState("");
+  const [uploadSaving, setUploadSaving] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  function loadSermons() {
+    fetch(`${BASE_PATH}/api/sermons`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : { sermons: [] }))
+      .then((data) => {
+        if (Array.isArray(data.sermons)) {
+          setSermons(data.sermons.map((s: { showPublic?: boolean } & DashboardSermon) => ({
+            ...s,
+            showPublic: s.showPublic ?? true,
+          })));
+        }
+      })
+      .catch(() => setSermons([]));
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -74,16 +97,151 @@ export default function ContentPage() {
     }
   }
 
+  async function handleUploadSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setUploadError("");
+    if (!uploadTitle.trim() || !uploadSpeaker.trim() || !uploadSeries.trim() || !uploadDate.trim()) {
+      setUploadError("Title, speaker, series, and date are required.");
+      return;
+    }
+    setUploadSaving(true);
+    try {
+      const res = await fetch(`${BASE_PATH}/api/sermons`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: uploadTitle.trim(),
+          speaker: uploadSpeaker.trim(),
+          series: uploadSeries.trim(),
+          date: uploadDate.trim(),
+          duration: uploadDuration.trim() || undefined,
+          description: uploadDescription.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setUploadError(data.error || "Failed to add sermon");
+        return;
+      }
+      setUploadOpen(false);
+      setUploadTitle("");
+      setUploadSpeaker("");
+      setUploadSeries("");
+      setUploadDate("");
+      setUploadDuration("");
+      setUploadDescription("");
+      loadSermons();
+    } finally {
+      setUploadSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Content & Discipleship</h1>
-        <button type="button" className="btn-primary whitespace-nowrap">
+        <button
+          type="button"
+          onClick={() => { setUploadError(""); setUploadOpen(true); }}
+          className="btn-primary whitespace-nowrap"
+        >
           <Plus className="h-4 w-4" />
           Upload Sermon
         </button>
       </div>
+
+      {/* Upload Sermon modal */}
+      <Modal
+        open={uploadOpen}
+        onClose={() => !uploadSaving && setUploadOpen(false)}
+        title="Add sermon"
+        wide
+      >
+        <form onSubmit={handleUploadSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Title *</label>
+            <input
+              type="text"
+              value={uploadTitle}
+              onChange={(e) => setUploadTitle(e.target.value)}
+              className="input mt-1 w-full"
+              placeholder="e.g. Unshakeable Faith"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Speaker *</label>
+              <input
+                type="text"
+                value={uploadSpeaker}
+                onChange={(e) => setUploadSpeaker(e.target.value)}
+                className="input mt-1 w-full"
+                placeholder="e.g. Pastor Name"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Series *</label>
+              <input
+                type="text"
+                value={uploadSeries}
+                onChange={(e) => setUploadSeries(e.target.value)}
+                className="input mt-1 w-full"
+                placeholder="e.g. Standing Firm"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Date *</label>
+              <input
+                type="date"
+                value={uploadDate}
+                onChange={(e) => setUploadDate(e.target.value)}
+                className="input mt-1 w-full"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Duration</label>
+              <input
+                type="text"
+                value={uploadDuration}
+                onChange={(e) => setUploadDuration(e.target.value)}
+                className="input mt-1 w-full"
+                placeholder="e.g. 42 min"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <textarea
+              value={uploadDescription}
+              onChange={(e) => setUploadDescription(e.target.value)}
+              className="input mt-1 w-full min-h-[80px]"
+              placeholder="Brief description of the sermon"
+              rows={3}
+            />
+          </div>
+          {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
+          <div className="flex gap-3 pt-2">
+            <button type="submit" disabled={uploadSaving} className="btn-primary">
+              {uploadSaving ? "Saving…" : "Add sermon"}
+            </button>
+            <button
+              type="button"
+              onClick={() => !uploadSaving && setUploadOpen(false)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {loading ? (
         <p className="py-8 text-center text-gray-500">Loading content…</p>

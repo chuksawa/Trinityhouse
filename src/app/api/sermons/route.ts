@@ -51,3 +51,44 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to load sermons" }, { status: 500 });
   }
 }
+
+/** POST: Create a new sermon. Auth required. */
+export async function POST(req: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(getCookieName())?.value;
+    const payload = token ? await verifyToken(token) : null;
+    if (!payload) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const body = await req.json().catch(() => ({}));
+    const title = (body.title ?? "").toString().trim();
+    const speaker = (body.speaker ?? "").toString().trim();
+    const series = (body.series ?? "").toString().trim();
+    const dateStr = (body.date ?? "").toString().trim();
+    const duration = (body.duration ?? "").toString().trim();
+    const description = (body.description ?? "").toString().trim();
+
+    if (!title || !speaker || !series || !dateStr) {
+      return NextResponse.json(
+        { error: "Title, speaker, series, and date are required" },
+        { status: 400 }
+      );
+    }
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) {
+      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+    }
+    const dateOnly = date.toISOString().slice(0, 10);
+
+    const id = crypto.randomUUID();
+    await query(
+      `INSERT INTO sermons (id, title, speaker, series, date, duration, views, description)
+       VALUES ($1, $2, $3, $4, $5::date, $6, 0, $7)`,
+      [id, title, speaker, series, dateOnly, duration || null, description || null]
+    );
+    return NextResponse.json({ ok: true, id });
+  } catch (e) {
+    console.error("[sermons POST]", e);
+    return NextResponse.json({ error: "Failed to create sermon" }, { status: 500 });
+  }
+}
