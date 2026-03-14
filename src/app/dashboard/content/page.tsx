@@ -393,15 +393,13 @@ export default function ContentPage() {
           </div>
         ) : (
           <form onSubmit={handleUploadSubmit} className="space-y-4">
-            {createStep !== "type" && (
-              <button
-                type="button"
-                onClick={() => setCreateStep("type")}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                ← Back to type
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setCreateStep("type")}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              ← Back to type
+            </button>
 
             {createStep === "sermon" && (
               <>
