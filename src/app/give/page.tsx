@@ -119,6 +119,9 @@ export default function GivePage() {
   const [success, setSuccess] = useState(false);
   const [canceled, setCanceled] = useState(false);
   const [paystackReady, setPaystackReady] = useState(false);
+  const [verifyRef, setVerifyRef] = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
 
   // Stripe state (secondary)
   const [showStripe, setShowStripe] = useState(false);
@@ -140,10 +143,32 @@ export default function GivePage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Stripe return: ?success=1. Paystack return: ?reference=xxx or ?trxref=xxx (verify and show success)
   useEffect(() => {
     const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
     setSuccess(params.get("success") === "1");
     setCanceled(params.get("canceled") === "1");
+
+    const ref = params.get("reference") || params.get("trxref");
+    if (ref && PAYSTACK_KEY) {
+      const fund = (typeof window !== "undefined" ? window.sessionStorage.getItem("give_fund") : null) || "offering";
+      fetch(`${BASE_PATH}/api/giving/paystack-verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ reference: ref, fund }),
+      })
+        .then((res) => res.json().catch(() => ({})))
+        .then((data) => {
+          if (data.verified) {
+            setSuccess(true);
+            if (typeof window !== "undefined") {
+              window.history.replaceState({}, "", window.location.pathname + window.location.hash);
+            }
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   const parsedAmount = useCallback(() => {
@@ -176,6 +201,7 @@ export default function GivePage() {
 
     setLoading(true);
     try {
+      if (typeof window !== "undefined") window.sessionStorage.setItem("give_fund", fund);
       const popup = new window.PaystackPop();
       popup.newTransaction({
         key: PAYSTACK_KEY,
@@ -250,6 +276,32 @@ export default function GivePage() {
   const amountLabel = amount
     ? `${CURRENCY.symbol}${Number(amount.replace(/[^0-9.]/g, "") || 0).toLocaleString()} — ${fund.replace(/_/g, " ")}`
     : "";
+
+  async function handleVerifyReference(e: React.FormEvent) {
+    e.preventDefault();
+    const ref = verifyRef.trim();
+    if (!ref) return;
+    setVerifyError("");
+    setVerifyLoading(true);
+    try {
+      const res = await fetch(`${BASE_PATH}/api/giving/paystack-verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ reference: ref, fund }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.verified) {
+        setSuccess(true);
+        setVerifyRef("");
+      } else {
+        setVerifyError(data.error || "Verification failed");
+      }
+    } catch {
+      setVerifyError("Could not verify. Try again.");
+    }
+    setVerifyLoading(false);
+  }
 
   const showMainForm = !success && !showStripe;
 
@@ -381,6 +433,24 @@ export default function GivePage() {
               <p className="mt-4 text-center text-sm text-gray-500">
                 All Nigerian payment methods are supported — card, bank transfer, USSD, and mobile money. You can also give via direct bank transfer — contact the church office for account details.
               </p>
+
+              {/* Already paid? Verify with reference (e.g. from Paystack success email) */}
+              <form onSubmit={handleVerifyReference} className="mt-6 border-t border-gray-100 pt-6">
+                <p className="text-sm text-gray-600">Already paid? Confirm your gift with the transaction reference from your receipt email.</p>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    value={verifyRef}
+                    onChange={(e) => { setVerifyRef(e.target.value); setVerifyError(""); }}
+                    placeholder="e.g. 7ed7a7b2a8c..."
+                    className="input flex-1"
+                  />
+                  <button type="submit" disabled={verifyLoading || !verifyRef.trim()} className="btn-secondary shrink-0">
+                    {verifyLoading ? "Verifying…" : "Verify"}
+                  </button>
+                </div>
+                {verifyError && <p className="mt-2 text-sm text-red-600">{verifyError}</p>}
+              </form>
             </>
           )}
 
