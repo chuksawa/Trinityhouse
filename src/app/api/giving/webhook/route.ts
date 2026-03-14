@@ -23,45 +23,66 @@ export async function POST(req: Request) {
     return NextResponse.json("Invalid signature", { status: 400 });
   }
 
-  if (event.type !== "checkout.session.completed") {
-    return NextResponse.json({ received: true }, { status: 200 });
-  }
-
-  const session = event.data.object as Stripe.Checkout.Session;
-  const amountTotal = session.amount_total ?? 0;
-  const fund = (session.metadata?.fund as string) || "offering";
-  const personId = (session.metadata?.person_id as string) || null;
-
-  if (amountTotal <= 0) {
-    return NextResponse.json({ received: true }, { status: 200 });
-  }
-
-  try {
-    const amount = amountTotal / 100;
-    const date = new Date().toISOString().slice(0, 10);
-    const giftId = `gstripe_${session.id.replace(/^cs_/, "").slice(0, 20)}`;
-
-    const client = await getClient();
-    try {
-      await client.query(
-        `INSERT INTO gifts (id, person_id, amount, date, fund, method, recurring)
-         VALUES ($1, $2, $3, $4::date, $5, 'online', false)
-         ON CONFLICT (id) DO NOTHING`,
-        [giftId, personId || null, amount, date, fund]
-      );
-      if (personId) {
-        await client.query(
-          `UPDATE people SET giving_total = COALESCE(giving_total, 0) + $1, updated_at = NOW() WHERE id = $2`,
-          [amount, personId]
-        );
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const amountTotal = session.amount_total ?? 0;
+    const fund = (session.metadata?.fund as string) || "offering";
+    const personId = (session.metadata?.person_id as string) || null;
+    if (amountTotal > 0) {
+      try {
+        await recordGift(session.id.replace(/^cs_/, ""), amountTotal / 100, fund, personId || null);
+      } catch (e) {
+        console.error("[giving/webhook] Insert failed (checkout):", e);
+        return NextResponse.json("Processing failed", { status: 500 });
       }
-    } finally {
-      client.release();
     }
-  } catch (e) {
-    console.error("[giving/webhook] Insert failed:", e);
-    return NextResponse.json("Processing failed", { status: 500 });
+    return NextResponse.json({ received: true }, { status: 200 });
+  }
+
+  if (event.type === "payment_intent.succeeded") {
+    const pi = event.data.object as Stripe.PaymentIntent;
+    const amountSmallest = pi.amount;
+    const fund = (pi.metadata?.fund as string) || "offering";
+    const personId = (pi.metadata?.person_id as string) || null;
+    // amount is in smallest unit (kobo for NGN); convert to main unit for gifts table
+    const amount = amountSmallest / 100;
+    if (amount > 0) {
+      try {
+        await recordGift(pi.id.replace(/^pi_/, ""), amount, fund, personId || null);
+      } catch (e) {
+        console.error("[giving/webhook] Insert failed (payment_intent):", e);
+        return NextResponse.json("Processing failed", { status: 500 });
+      }
+    }
+    return NextResponse.json({ received: true }, { status: 200 });
   }
 
   return NextResponse.json({ received: true }, { status: 200 });
+}
+
+async function recordGift(
+  idSuffix: string,
+  amount: number,
+  fund: string,
+  personId: string | null
+): Promise<void> {
+  const date = new Date().toISOString().slice(0, 10);
+  const giftId = `gstripe_${idSuffix.slice(0, 20)}`;
+  const client = await getClient();
+  try {
+    await client.query(
+      `INSERT INTO gifts (id, person_id, amount, date, fund, method, recurring)
+       VALUES ($1, $2, $3, $4::date, $5, 'online', false)
+       ON CONFLICT (id) DO NOTHING`,
+      [giftId, personId, amount, date, fund]
+    );
+    if (personId) {
+      await client.query(
+        `UPDATE people SET giving_total = COALESCE(giving_total, 0) + $1, updated_at = NOW() WHERE id = $2`,
+        [amount, personId]
+      );
+    }
+  } finally {
+    client.release();
+  }
 }
