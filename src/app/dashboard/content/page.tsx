@@ -19,26 +19,8 @@ type DashboardSermon = {
   showPublic: boolean;
 };
 
-const READING_PLANS = [
-  {
-    id: "rp1",
-    title: "21 Days of Prayer",
-    description: "Build a lasting prayer habit with daily reflections and scripture.",
-    duration: "21 days",
-  },
-  {
-    id: "rp2",
-    title: "Gospel of John Study",
-    description: "Deep dive into the fourth gospel with guided questions and commentary.",
-    duration: "12 weeks",
-  },
-  {
-    id: "rp3",
-    title: "Marriage Foundations",
-    description: "Strengthen your marriage with biblical principles and practical exercises.",
-    duration: "6 weeks",
-  },
-];
+/** Reading plans come from API or CMS when available; no seeded data. */
+const READING_PLANS: { id: string; title: string; description: string; duration: string }[] = [];
 
 export default function ContentPage() {
   const [sermons, setSermons] = useState<DashboardSermon[]>([]);
@@ -219,18 +201,24 @@ export default function ContentPage() {
           {/* Reading Plans */}
           <div>
             <h2 className="mb-4 text-lg font-semibold text-gray-900">Reading Plans</h2>
-            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
-              {READING_PLANS.map((plan) => (
-                <div key={plan.id} className="card p-5">
-                  <h3 className="font-semibold text-gray-900">{plan.title}</h3>
-                  <p className="mt-2 text-sm text-gray-600">{plan.description}</p>
-                  <p className="mt-2 text-xs text-gray-500">{plan.duration}</p>
-                  <button type="button" className="btn-secondary mt-4 w-full">
-                    Start Plan
-                  </button>
-                </div>
-              ))}
-            </div>
+            {READING_PLANS.length === 0 ? (
+              <div className="card p-8 text-center text-gray-500">
+                No reading plans yet. Add plans here when you’re ready.
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
+                {READING_PLANS.map((plan) => (
+                  <div key={plan.id} className="card p-5">
+                    <h3 className="font-semibold text-gray-900">{plan.title}</h3>
+                    <p className="mt-2 text-sm text-gray-600">{plan.description}</p>
+                    <p className="mt-2 text-xs text-gray-500">{plan.duration}</p>
+                    <button type="button" className="btn-secondary mt-4 w-full">
+                      Start Plan
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
