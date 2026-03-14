@@ -1,11 +1,11 @@
 "use client";
 
+import { useState, useEffect, useMemo } from "react";
 import StatCard from "@/components/stat-card";
 import { cn, formatCurrency, formatDate, timeAgo, getInitials } from "@/lib/utils";
 import {
   dashboardStats,
   attendanceHistory,
-  givingHistory,
   people,
   events,
   prayerRequests,
@@ -24,7 +24,43 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 export default function DashboardPage() {
+  const [gifts, setGifts] = useState<{ amount: number; date: string }[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE_PATH}/api/giving/gifts`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { gifts: [] }))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data.gifts)) {
+          setGifts(data.gifts.map((g: { amount: number; date: string }) => ({ amount: g.amount, date: g.date })));
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const totalGivingMTD = useMemo(
+    () => gifts.filter((g) => g.date.startsWith(monthStart) && g.amount > 0).reduce((sum, g) => sum + g.amount, 0),
+    [gifts, monthStart]
+  );
+  const givingHistory = useMemo(() => {
+    const byMonth: Record<string, number> = {};
+    gifts.forEach((g) => {
+      if (g.amount > 0 && g.date) {
+        const m = g.date.slice(0, 7);
+        byMonth[m] = (byMonth[m] || 0) + g.amount;
+      }
+    });
+    return Object.entries(byMonth)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, amount]) => ({ month, amount }));
+  }, [gifts]);
+
   const atRiskPeople = people.filter((p) => p.status === "at_risk" || p.status === "inactive");
   const upcomingEvents = [...events]
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -68,8 +104,8 @@ export default function DashboardPage() {
         />
         <StatCard
           label="Giving (MTD)"
-          value={formatCurrency(dashboardStats.totalGivingMTD)}
-          change={dashboardStats.givingChange}
+          value={formatCurrency(totalGivingMTD)}
+          change={undefined}
           icon={Heart}
           iconColor="text-rose-600 bg-rose-50"
         />
