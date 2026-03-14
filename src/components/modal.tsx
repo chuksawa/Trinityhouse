@@ -9,10 +9,13 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   wide?: boolean;
+  /** Higher z-index so this modal appears above others (e.g. when opening a modal from inside another). */
+  priority?: "high";
 }
 
-export default function Modal({ open, onClose, title, children, wide }: ModalProps) {
+export default function Modal({ open, onClose, title, children, wide, priority }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const zClass = priority === "high" ? "z-[60]" : "z-50";
 
   useEffect(() => {
     if (open) {
@@ -30,7 +33,7 @@ export default function Modal({ open, onClose, title, children, wide }: ModalPro
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      className={`fixed inset-0 ${zClass} flex items-center justify-center bg-black/40 backdrop-blur-sm p-4`}
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}

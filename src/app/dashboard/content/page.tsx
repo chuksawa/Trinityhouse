@@ -352,12 +352,13 @@ export default function ContentPage() {
         </form>
       </Modal>
 
-      {/* Edit sermon modal */}
+      {/* Edit sermon modal — higher z-index so it appears above the detail modal */}
       <Modal
         open={!!editingSermon}
         onClose={() => !editSaving && setEditingSermon(null)}
         title="Edit sermon"
         wide
+        priority="high"
       >
         <form onSubmit={handleEditSubmit} className="space-y-4">
           <div>
