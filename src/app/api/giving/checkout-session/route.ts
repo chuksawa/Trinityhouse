@@ -24,10 +24,11 @@ export async function POST(req: Request) {
     const currency = (body.currency || "ngn").toString().toLowerCase().slice(0, 3);
 
     const isNgn = currency === "ngn";
-    const minAmount = isNgn ? 10000 : 100; // NGN: 10000 kobo = ₦100; USD: 100 cents = $1
+    // Stripe Nigerian payment methods require 500–100,000,000 NGN (50000 kobo min)
+    const minAmount = isNgn ? 50000 : 100; // NGN: 50000 kobo = ₦500; USD: 100 cents = $1
     if (amountCents < minAmount) {
       return NextResponse.json(
-        { error: isNgn ? "Minimum amount is ₦100" : "Minimum amount is 1.00" },
+        { error: isNgn ? "Minimum amount is ₦500" : "Minimum amount is 1.00" },
         { status: 400 }
       );
     }
@@ -50,9 +51,14 @@ export async function POST(req: Request) {
     const successUrl = `${baseUrl}${path}/give?success=1`;
     const cancelUrl = `${baseUrl}${path}/give?canceled=1`;
 
+    // Nigeria: card + Naira card + Naira bank transfer (Stripe API supports these; SDK types may not list them yet)
+    const paymentMethodTypes = (isNgn
+      ? ["card", "ng_card", "ng_bank_transfer"]
+      : ["card"]) as Stripe.Checkout.SessionCreateParams.PaymentMethodType[];
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      payment_method_types: ["card"],
+      payment_method_types: paymentMethodTypes,
       line_items: [
         {
           price_data: {
@@ -75,6 +81,7 @@ export async function POST(req: Request) {
       branding_settings: {
         display_name: "Trinity House",
       },
+      ...(isNgn && { locale: "en-NG" as Stripe.Checkout.SessionCreateParams.Locale }),
     });
 
     return NextResponse.json({ url: session.url });

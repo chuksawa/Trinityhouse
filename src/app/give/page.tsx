@@ -19,7 +19,7 @@ const FUND_OPTIONS: { value: string; label: string }[] = [
 const PRESET_AMOUNTS_NGN = [1000, 2000, 5000, 10000, 20000, 50000];
 
 const CURRENCY = { code: "ngn", symbol: "₦", name: "Nigerian Naira" } as const;
-const MIN_AMOUNT_NGN = 100; // minimum ₦100
+const MIN_AMOUNT_NGN = 500; // minimum ₦500 (required for Naira card & bank transfer)
 
 export default function GivePage() {
   const [config, setConfig] = useState<{
@@ -60,7 +60,7 @@ export default function GivePage() {
     const value = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0;
     // NGN: amount in kobo (1 Naira = 100 kobo)
     const amountSmallestUnit = Math.round(value * 100);
-    if (amountSmallestUnit < 10000) {
+    if (amountSmallestUnit < 50000) {
       setError(`Minimum amount is ${CURRENCY.symbol}${MIN_AMOUNT_NGN.toLocaleString()}`);
       return;
     }
@@ -167,12 +167,12 @@ export default function GivePage() {
               disabled={loading}
               className="btn-primary w-full"
             >
-              {loading ? "Redirecting…" : "Pay with card (secure)"}
+              {loading ? "Redirecting…" : "Continue to pay (card, Naira card or bank transfer)"}
             </button>
           </form>
 
           <p className="mt-4 text-center text-sm text-gray-500">
-            You can also give via <strong>bank transfer</strong> — contact the church office for account details.
+            On the next page you can pay with <strong>card</strong>, <strong>Naira card</strong>, or <strong>Naira bank transfer</strong>. You can also give via direct bank transfer — contact the church office for account details.
           </p>
 
           {/* External link (e.g. Paystack, Flutterwave) */}
