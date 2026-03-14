@@ -15,7 +15,11 @@ const FUND_OPTIONS: { value: string; label: string }[] = [
   { value: "benevolence", label: "Benevolence" },
 ];
 
-const PRESET_AMOUNTS = [25, 50, 100, 250, 500, 1000];
+// Nigerian Naira presets (₦)
+const PRESET_AMOUNTS_NGN = [1000, 2000, 5000, 10000, 20000, 50000];
+
+const CURRENCY = { code: "ngn", symbol: "₦", name: "Nigerian Naira" } as const;
+const MIN_AMOUNT_NGN = 100; // minimum ₦100
 
 export default function GivePage() {
   const [config, setConfig] = useState<{
@@ -53,10 +57,11 @@ export default function GivePage() {
   async function handleStripeGive(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const dollars = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0;
-    const amountCents = Math.round(dollars * 100);
-    if (amountCents < 100) {
-      setError("Minimum amount is $1.00");
+    const value = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0;
+    // NGN: amount in kobo (1 Naira = 100 kobo)
+    const amountSmallestUnit = Math.round(value * 100);
+    if (amountSmallestUnit < 10000) {
+      setError(`Minimum amount is ${CURRENCY.symbol}${MIN_AMOUNT_NGN.toLocaleString()}`);
       return;
     }
     setLoading(true);
@@ -65,7 +70,7 @@ export default function GivePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ amountCents, fund, currency: "usd" }),
+        body: JSON.stringify({ amountCents: amountSmallestUnit, fund, currency: CURRENCY.code }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -111,12 +116,12 @@ export default function GivePage() {
             </div>
           )}
 
-          {/* In-app giving (Stripe) */}
+          {/* In-app giving (Stripe) — Naira */}
           <form onSubmit={handleStripeGive} className="mt-8 space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Amount (USD)</label>
+              <label className="block text-sm font-medium text-gray-700">Amount ({CURRENCY.symbol} {CURRENCY.name})</label>
               <div className="mt-2 flex flex-wrap gap-2">
-                {PRESET_AMOUNTS.map((n) => (
+                {PRESET_AMOUNTS_NGN.map((n) => (
                   <button
                     key={n}
                     type="button"
@@ -127,7 +132,7 @@ export default function GivePage() {
                         : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
                     }`}
                   >
-                    ${n}
+                    {CURRENCY.symbol}{n.toLocaleString()}
                   </button>
                 ))}
               </div>
@@ -162,14 +167,18 @@ export default function GivePage() {
               disabled={loading}
               className="btn-primary w-full"
             >
-              {loading ? "Redirecting…" : "Give with card (secure)"}
+              {loading ? "Redirecting…" : "Pay with card (secure)"}
             </button>
           </form>
 
-          {/* External link */}
+          <p className="mt-4 text-center text-sm text-gray-500">
+            You can also give via <strong>bank transfer</strong> — contact the church office for account details.
+          </p>
+
+          {/* External link (e.g. Paystack, Flutterwave) */}
           {config.givingExternalUrl && (
             <div className="mt-8 border-t border-gray-200 pt-8">
-              <p className="text-sm text-gray-600">Prefer to give through our partner platform?</p>
+              <p className="text-sm text-gray-600">Prefer to give through our payment partner?</p>
               <a
                 href={config.givingExternalUrl}
                 target="_blank"
@@ -190,7 +199,7 @@ export default function GivePage() {
           )}
 
           <p className="mt-8 text-center text-xs text-gray-400">
-            Card payments are processed securely by Stripe. You can also{" "}
+            Card payments are processed securely. You can also{" "}
             <Link href="/login" className="text-brand-600 hover:underline">sign in</Link> so your giving is linked to your profile.
           </p>
         </div>

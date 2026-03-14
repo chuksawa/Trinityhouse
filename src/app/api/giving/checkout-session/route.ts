@@ -21,11 +21,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     const amountCents = Math.round(Number(body.amountCents) || 0);
     const fund = FUNDS.includes(body.fund) ? body.fund : "offering";
-    const currency = (body.currency || "usd").toString().toLowerCase().slice(0, 3);
+    const currency = (body.currency || "ngn").toString().toLowerCase().slice(0, 3);
 
-    if (amountCents < 100) {
+    const isNgn = currency === "ngn";
+    const minAmount = isNgn ? 10000 : 100; // NGN: 10000 kobo = ₦100; USD: 100 cents = $1
+    if (amountCents < minAmount) {
       return NextResponse.json(
-        { error: "Minimum amount is 1.00" },
+        { error: isNgn ? "Minimum amount is ₦100" : "Minimum amount is 1.00" },
         { status: 400 }
       );
     }
