@@ -46,11 +46,12 @@ export default function Topbar({ onOpenMobileMenu, isMobile }: TopbarProps = {})
   const [navVisibility, setNavVisibility] = useState<Record<string, string[]>>({});
   const bellRef = useRef<HTMLDivElement>(null);
 
-  const isAdmin = user?.role === "superuser" || user?.role === "admin";
   const allowedHrefs =
-    isAdmin
-      ? null
-      : (user?.role && navVisibility[user.role]) ?? DEFAULT_USER_NAV;
+    user?.role && navVisibility[user.role] !== undefined
+      ? navVisibility[user.role]
+      : user?.role === "user"
+        ? DEFAULT_USER_NAV
+        : null;
   const visibleNavItems =
     allowedHrefs === null
       ? dashboardNavItems

@@ -21,12 +21,16 @@ export default function DashboardGuard({ children }: { children: React.ReactNode
       .then(([session, config]) => {
         if (cancelled) return;
         const role = session.user?.role as string | undefined;
-        const isAdmin = role === "superuser" || role === "admin";
-        if (isAdmin) {
+        const allowed =
+          role && config.navVisibility?.[role] !== undefined
+            ? config.navVisibility[role]
+            : role === "user"
+              ? DEFAULT_USER_NAV
+              : null;
+        if (allowed === null) {
           setReady(true);
           return;
         }
-        const allowed = (role && config.navVisibility?.[role]) ?? DEFAULT_USER_NAV;
         const path = pathname?.replace(new RegExp(`^${BASE_PATH}`), "") || "";
         const allowedPath = allowed.some(
           (href: string) => path === href || (href !== "/dashboard" && path.startsWith(href + "/"))

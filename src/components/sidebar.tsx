@@ -37,12 +37,12 @@ export default function Sidebar({ isMobile, open = false, onClose, onNavigate }:
   const [userRole, setUserRole] = useState<string | null>(null);
   const [navVisibility, setNavVisibility] = useState<Record<string, string[]>>({});
 
-  const isSuperuser = userRole === "superuser";
-  const isAdmin = userRole === "superuser" || userRole === "admin";
   const allowedHrefs =
-    isAdmin
-      ? null
-      : (userRole && navVisibility[userRole]) ?? DEFAULT_USER_NAV;
+    userRole && navVisibility[userRole] !== undefined
+      ? navVisibility[userRole]
+      : userRole === "user"
+        ? DEFAULT_USER_NAV
+        : null;
 
   useEffect(() => {
     let cancelled = false;

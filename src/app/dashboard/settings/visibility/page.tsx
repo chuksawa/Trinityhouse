@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, Loader2 } from "lucide-react";
+import { Loader2, Shield, UserCog, User } from "lucide-react";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-const ALL_NAV_ITEMS = [
+const ALL_PAGES = [
   { href: "/home", label: "Home" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/people", label: "People & Care" },
@@ -16,7 +16,21 @@ const ALL_NAV_ITEMS = [
   { href: "/dashboard/communication", label: "Communication" },
   { href: "/dashboard/content", label: "Content" },
   { href: "/dashboard/settings", label: "Settings" },
+] as const;
+
+const ALL_HREFS = ALL_PAGES.map((p) => p.href);
+
+const ROLE_CONFIG: { key: string; label: string; description: string; icon: typeof Shield }[] = [
+  { key: "superuser", label: "Superuser", description: "Top-level access. Restrict pages here if needed.", icon: Shield },
+  { key: "admin", label: "Admin", description: "Admins who manage the dashboard. Choose which pages they can see.", icon: UserCog },
+  { key: "user", label: "Member (user)", description: "Regular members. Choose which pages they can see.", icon: User },
 ];
+
+const DEFAULT_BY_ROLE: Record<string, string[]> = {
+  superuser: [...ALL_HREFS],
+  admin: [...ALL_HREFS],
+  user: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"],
+};
 
 export default function VisibilitySettingsPage() {
   const router = useRouter();
@@ -24,7 +38,11 @@ export default function VisibilitySettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
-  const [userHrefs, setUserHrefs] = useState<string[]>([]);
+  const [visibility, setVisibility] = useState<Record<string, string[]>>({
+    superuser: [...DEFAULT_BY_ROLE.superuser],
+    admin: [...DEFAULT_BY_ROLE.admin],
+    user: [...DEFAULT_BY_ROLE.user],
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -36,8 +54,12 @@ export default function VisibilitySettingsPage() {
         if (cancelled) return;
         const role = session.user?.role as string | undefined;
         setIsAdmin(role === "superuser" || role === "admin");
-        const forUser = config.navVisibility?.user;
-        setUserHrefs(Array.isArray(forUser) ? forUser : ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"]);
+        const raw = config.navVisibility ?? {};
+        setVisibility({
+          superuser: Array.isArray(raw.superuser) ? raw.superuser : [...DEFAULT_BY_ROLE.superuser],
+          admin: Array.isArray(raw.admin) ? raw.admin : [...DEFAULT_BY_ROLE.admin],
+          user: Array.isArray(raw.user) ? raw.user : [...DEFAULT_BY_ROLE.user],
+        });
       })
       .catch(() => {
         if (!cancelled) setError("Failed to load.");
@@ -48,10 +70,19 @@ export default function VisibilitySettingsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  function toggle(href: string) {
-    setUserHrefs((prev) =>
-      prev.includes(href) ? prev.filter((h) => h !== href) : [...prev, href]
-    );
+  function toggle(roleKey: string, href: string) {
+    setVisibility((prev) => {
+      const list = prev[roleKey] ?? [];
+      const next = list.includes(href) ? list.filter((h) => h !== href) : [...list, href];
+      return { ...prev, [roleKey]: next };
+    });
+  }
+
+  function setAll(roleKey: string, checked: boolean) {
+    setVisibility((prev) => ({
+      ...prev,
+      [roleKey]: checked ? [...ALL_HREFS] : [],
+    }));
   }
 
   async function handleSave() {
@@ -62,7 +93,7 @@ export default function VisibilitySettingsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ navVisibility: { user: userHrefs } }),
+        body: JSON.stringify({ navVisibility: visibility }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -78,7 +109,7 @@ export default function VisibilitySettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex flex-col items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
@@ -94,53 +125,78 @@ export default function VisibilitySettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard visibility</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Choose which dashboard pages <strong>Members</strong> (user role) can see in the sidebar and open. Admins always see all pages.
+          Control which pages each role can see in the sidebar and open. Changes apply after save.
         </p>
       </div>
 
-      <div className="card max-w-2xl p-6">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-          <Eye className="h-5 w-5" />
-          Member (user role) can see
-        </h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Clear all to hide dashboard from members until you add at least Dashboard.
-        </p>
-        <ul className="mt-4 space-y-2">
-          {ALL_NAV_ITEMS.map((item) => (
-            <li key={item.href}>
-              <label className="flex cursor-pointer items-center gap-3 rounded-lg py-2 hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  checked={userHrefs.includes(item.href)}
-                  onChange={() => toggle(item.href)}
-                  className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                />
-                <span className="font-medium text-gray-900">{item.label}</span>
-                <span className="text-xs text-gray-500">{item.href}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="btn-primary inline-flex items-center gap-2"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Save
-          </button>
-          <button type="button" onClick={() => router.back()} className="btn-secondary">
-            Cancel
-          </button>
-        </div>
+      {ROLE_CONFIG.map(({ key: roleKey, label, description, icon: Icon }) => {
+        const hrefs = visibility[roleKey] ?? [];
+        const allChecked = hrefs.length === ALL_HREFS.length;
+        const noneChecked = hrefs.length === 0;
+        return (
+          <div key={roleKey} className="card max-w-2xl p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Icon className="h-5 w-5 text-gray-600" />
+                <h2 className="text-lg font-semibold text-gray-900">{label}</h2>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAll(roleKey, true)}
+                  className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                >
+                  All
+                </button>
+                <span className="text-gray-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => setAll(roleKey, false)}
+                  className="text-xs font-medium text-gray-500 hover:text-gray-700"
+                >
+                  None
+                </button>
+              </div>
+            </div>
+            <p className="mt-1 text-sm text-gray-500">{description}</p>
+            <ul className="mt-4 space-y-2">
+              {ALL_PAGES.map((item) => (
+                <li key={item.href}>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg py-2 hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      checked={hrefs.includes(item.href)}
+                      onChange={() => toggle(roleKey, item.href)}
+                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="font-medium text-gray-900">{item.label}</span>
+                    <span className="text-xs text-gray-500">{item.href}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-primary inline-flex items-center gap-2"
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Save visibility for all roles
+        </button>
+        <button type="button" onClick={() => router.back()} className="btn-secondary">
+          Cancel
+        </button>
       </div>
     </div>
   );
