@@ -69,6 +69,7 @@ export async function POST(req: Request) {
     const duration = (body.duration ?? "").toString().trim();
     const description = (body.description ?? "").toString().trim();
     const videoUrl = typeof body.video_url === "string" ? body.video_url.trim() || null : null;
+    const showPublic = typeof body.show_public === "boolean" ? body.show_public : true;
 
     if (!title || !speaker || !series || !dateStr) {
       return NextResponse.json(
@@ -83,11 +84,22 @@ export async function POST(req: Request) {
     const dateOnly = date.toISOString().slice(0, 10);
 
     const id = crypto.randomUUID();
-    await query(
-      `INSERT INTO sermons (id, title, speaker, series, date, duration, views, description, video_url)
-       VALUES ($1, $2, $3, $4, $5::date, $6, 0, $7, $8)`,
-      [id, title, speaker, series, dateOnly, duration || null, description || null, videoUrl]
-    );
+    try {
+      await query(
+        `INSERT INTO sermons (id, title, speaker, series, date, duration, views, description, video_url, show_public)
+         VALUES ($1, $2, $3, $4, $5::date, $6, 0, $7, $8, $9)`,
+        [id, title, speaker, series, dateOnly, duration || null, description || null, videoUrl, showPublic]
+      );
+    } catch (colErr: unknown) {
+      const m = colErr instanceof Error ? colErr.message : String(colErr);
+      if (m.includes("show_public")) {
+        await query(
+          `INSERT INTO sermons (id, title, speaker, series, date, duration, views, description, video_url)
+           VALUES ($1, $2, $3, $4, $5::date, $6, 0, $7, $8)`,
+          [id, title, speaker, series, dateOnly, duration || null, description || null, videoUrl]
+        );
+      } else throw colErr;
+    }
     return NextResponse.json({ ok: true, id });
   } catch (e) {
     console.error("[sermons POST]", e);
