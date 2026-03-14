@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Heart,
   DollarSign,
@@ -15,14 +15,8 @@ import {
   formatDate,
   getInitials,
 } from "@/lib/utils";
-import {
-  gifts,
-  givingHistory,
-  getPersonById,
-  dashboardStats,
-  people,
-} from "@/lib/data";
 import type { Gift } from "@/lib/data";
+import type { Person } from "@/lib/data";
 import {
   BarChart,
   Bar,
@@ -61,7 +55,40 @@ function formatMethod(method: Gift["method"]): string {
   return method.charAt(0).toUpperCase() + method.slice(1);
 }
 
+type DashboardGift = Omit<Gift, "personId"> & {
+  personId: string | null;
+  personName?: string;
+};
+
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
+function getPersonById(people: Person[], id: string): Person | undefined {
+  return people.find((p) => p.id === id);
+}
+
 export default function GivingPage() {
+  const [gifts, setGifts] = useState<DashboardGift[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch(`${BASE_PATH}/api/giving/gifts`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { gifts: [] })),
+      fetch(`${BASE_PATH}/api/people`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { people: [] })),
+    ]).then(([giftsData, peopleData]) => {
+      if (!cancelled) {
+        setGifts(Array.isArray(giftsData.gifts) ? giftsData.gifts : []);
+        setPeople(Array.isArray(peopleData.people) ? peopleData.people : []);
+      }
+    }).catch(() => {
+      if (!cancelled) setGifts([]);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const thirtyDaysAgo = new Date(now);
@@ -69,7 +96,7 @@ export default function GivingPage() {
 
   const giftsThisMonth = useMemo(
     () => gifts.filter((g) => g.date.startsWith(monthStart) && g.amount > 0),
-    [monthStart]
+    [gifts, monthStart]
   );
 
   const totalGivingMTD = useMemo(
@@ -80,7 +107,7 @@ export default function GivingPage() {
   const recurringGiversCount = useMemo(() => {
     const ids = new Set<string>();
     giftsThisMonth.forEach((g) => {
-      if (g.recurring) ids.add(g.personId);
+      if (g.recurring && g.personId) ids.add(g.personId);
     });
     return ids.size;
   }, [giftsThisMonth]);
@@ -88,14 +115,14 @@ export default function GivingPage() {
   const firstTimeGiversCount = useMemo(() => {
     const gaveBeforeThisMonth = new Set<string>();
     gifts.forEach((g) => {
-      if (g.date < `${monthStart}-01`) gaveBeforeThisMonth.add(g.personId);
+      if (g.date < `${monthStart}-01`) gaveBeforeThisMonth.add(g.personId ?? "guest");
     });
     const firstTimeIds = new Set<string>();
     giftsThisMonth.forEach((g) => {
-      if (!gaveBeforeThisMonth.has(g.personId)) firstTimeIds.add(g.personId);
+      if (!gaveBeforeThisMonth.has(g.personId ?? "guest")) firstTimeIds.add(g.personId ?? "guest");
     });
     return firstTimeIds.size;
-  }, [giftsThisMonth, monthStart]);
+  }, [gifts, giftsThisMonth, monthStart]);
 
   const recentGifts = useMemo(
     () =>
@@ -103,7 +130,7 @@ export default function GivingPage() {
         .filter((g) => g.amount > 0)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 10),
-    []
+    [gifts]
   );
 
   const givingByFund = useMemo(() => {
@@ -115,16 +142,30 @@ export default function GivingPage() {
       benevolence: 0,
     };
     gifts.filter((g) => g.amount > 0).forEach((g) => {
-      byFund[g.fund] += g.amount;
+      const fund = g.fund in byFund ? g.fund : "offering";
+      byFund[fund] += g.amount;
     });
     const total = Object.values(byFund).reduce((s, v) => s + v, 0);
     return { byFund, total };
-  }, []);
+  }, [gifts]);
+
+  const givingHistory = useMemo(() => {
+    const byMonth: Record<string, number> = {};
+    gifts.forEach((g) => {
+      if (g.amount > 0 && g.date) {
+        const m = g.date.slice(0, 7);
+        byMonth[m] = (byMonth[m] || 0) + g.amount;
+      }
+    });
+    return Object.entries(byMonth)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, amount]) => ({ month, amount }));
+  }, [gifts]);
 
   const lapsedGivers = useMemo(() => {
     const lastGiftByPerson = new Map<string, string>();
     gifts.forEach((g) => {
-      if (g.amount > 0) {
+      if (g.amount > 0 && g.personId) {
         const current = lastGiftByPerson.get(g.personId) ?? "0000-00-00";
         if (g.date > current) lastGiftByPerson.set(g.personId, g.date);
       }
@@ -143,7 +184,15 @@ export default function GivingPage() {
         (a, b) =>
           new Date(b.lastGift).getTime() - new Date(a.lastGift).getTime()
       );
-  }, [thirtyDaysAgo]);
+  }, [gifts, people, thirtyDaysAgo]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-gray-500">Loading giving data…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -161,7 +210,7 @@ export default function GivingPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Total Giving MTD"
-          value={formatCurrency(dashboardStats.totalGivingMTD)}
+          value={formatCurrency(totalGivingMTD)}
           icon={Heart}
           iconColor="text-rose-600 bg-rose-50"
         />
@@ -258,10 +307,8 @@ export default function GivingPage() {
                   </tr>
                 ) : (
                   recentGifts.map((gift) => {
-                    const person = getPersonById(gift.personId);
-                    const name = person
-                      ? `${person.firstName} ${person.lastName}`
-                      : "Unknown";
+                    const person = gift.personId ? getPersonById(people, gift.personId) : undefined;
+                    const name = gift.personName ?? (person ? `${person.firstName} ${person.lastName}` : "Guest");
                     return (
                       <tr
                         key={gift.id}
