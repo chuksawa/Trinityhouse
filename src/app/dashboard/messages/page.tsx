@@ -101,7 +101,7 @@ export default function MessagesPage() {
         <button
           type="button"
           onClick={() => { setError(""); setComposeOpen(true); }}
-          className="btn-primary inline-flex items-center gap-2"
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
           <Plus className="h-4 w-4" />
           New message
@@ -126,7 +126,7 @@ export default function MessagesPage() {
           <button
             type="button"
             onClick={() => setComposeOpen(true)}
-            className="btn-primary mt-2"
+            className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             <Plus className="h-4 w-4" />
             New message
@@ -188,11 +188,20 @@ export default function MessagesPage() {
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-3">
-            <button type="submit" disabled={sending || recipients.length === 0} className="btn-primary inline-flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={sending || recipients.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
               <Send className="h-4 w-4" />
               {sending ? "Sending…" : "Send"}
             </button>
-            <button type="button" onClick={() => setComposeOpen(false)} disabled={sending} className="btn-secondary">
+            <button
+              type="button"
+              onClick={() => setComposeOpen(false)}
+              disabled={sending}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
               Cancel
             </button>
           </div>
