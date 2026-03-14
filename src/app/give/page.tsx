@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import PublicHeader from "@/components/public-header";
 import { Heart, ExternalLink, CreditCard } from "lucide-react";
-import type PaystackPopType from "@paystack/inline-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
@@ -23,6 +23,26 @@ const FUND_OPTIONS: { value: string; label: string }[] = [
 const PRESET_AMOUNTS_NGN = [1000, 2000, 5000, 10000, 20000, 50000];
 const CURRENCY = { code: "ngn", symbol: "₦", name: "Nigerian Naira" } as const;
 const MIN_AMOUNT_NGN = 500;
+
+/* ── Paystack global type (loaded via CDN script) ── */
+declare global {
+  interface Window {
+    PaystackPop?: {
+      new (): {
+        newTransaction(opts: {
+          key: string;
+          email?: string;
+          amount: number;
+          currency?: string;
+          ref?: string;
+          channels?: string[];
+          onSuccess?: (txn: { reference: string }) => void;
+          onCancel?: () => void;
+        }): void;
+      };
+    };
+  }
+}
 
 /* ── Stripe Payment Form (secondary, international cards) ── */
 
@@ -97,6 +117,7 @@ export default function GivePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [canceled, setCanceled] = useState(false);
+  const [paystackReady, setPaystackReady] = useState(false);
 
   // Stripe state (secondary)
   const [showStripe, setShowStripe] = useState(false);
@@ -130,7 +151,7 @@ export default function GivePage() {
   }, [amount]);
 
   /* ── Paystack (primary) ── */
-  async function handlePaystack(e: React.FormEvent) {
+  function handlePaystack(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     const amountKobo = parsedAmount();
@@ -139,18 +160,23 @@ export default function GivePage() {
       return;
     }
     if (!PAYSTACK_KEY) {
-      setError("Paystack is not configured.");
+      setError("Paystack is not configured. Contact the church office.");
       return;
     }
+    if (!window.PaystackPop) {
+      setError("Payment system is still loading. Please try again in a moment.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const { default: PaystackPop } = await import("@paystack/inline-js") as { default: new () => PaystackPopType };
-      const popup = new PaystackPop();
+      const popup = new window.PaystackPop();
       popup.newTransaction({
         key: PAYSTACK_KEY,
         amount: amountKobo,
         currency: "NGN",
-        onSuccess: async (transaction: { reference: string }) => {
+        channels: ["card", "bank", "ussd", "mobile_money", "bank_transfer", "qr"],
+        onSuccess: async (transaction) => {
           try {
             const res = await fetch(`${BASE_PATH}/api/giving/paystack-verify`, {
               method: "POST",
@@ -173,8 +199,9 @@ export default function GivePage() {
           setLoading(false);
         },
       });
-    } catch {
-      setError("Could not open payment window");
+    } catch (err) {
+      console.error("[give] Paystack error:", err);
+      setError("Could not open payment window. Please try again.");
       setLoading(false);
     }
   }
@@ -221,6 +248,15 @@ export default function GivePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Load Paystack via CDN — their recommended approach */}
+      {PAYSTACK_KEY && (
+        <Script
+          src="https://js.paystack.co/v2/inline.js"
+          strategy="afterInteractive"
+          onLoad={() => setPaystackReady(true)}
+        />
+      )}
+
       <PublicHeader />
 
       <main className="mx-auto max-w-2xl px-4 py-12 sm:py-16">
@@ -299,10 +335,14 @@ export default function GivePage() {
                 {/* Primary: Paystack */}
                 <button
                   type="submit"
-                  disabled={loading || !PAYSTACK_KEY}
+                  disabled={loading || !PAYSTACK_KEY || !paystackReady}
                   className="btn-primary w-full"
                 >
-                  {loading ? "Opening payment…" : "Pay now (card, bank transfer, USSD, mobile money)"}
+                  {!paystackReady && PAYSTACK_KEY
+                    ? "Loading payment…"
+                    : loading
+                    ? "Opening payment…"
+                    : "Pay now (card, bank transfer, USSD, mobile money)"}
                 </button>
               </form>
 
