@@ -70,6 +70,9 @@ export async function POST(req: Request) {
         fund,
         person_id: personId ?? "",
       },
+      branding_settings: {
+        display_name: "Trinity House",
+      },
     });
 
     return NextResponse.json({ url: session.url });
