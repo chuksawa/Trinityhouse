@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Heart,
   MessageSquare,
+  MessageCircle,
   BookOpen,
   Settings,
 } from "lucide-react";
@@ -19,6 +20,7 @@ export const dashboardNavItems = [
   { href: "/dashboard/events", label: "Events", icon: CalendarDays },
   { href: "/dashboard/giving", label: "Giving", icon: Heart },
   { href: "/dashboard/communication", label: "Communication", icon: MessageSquare },
+  { href: "/dashboard/messages", label: "Messages", icon: MessageCircle },
   { href: "/dashboard/content", label: "Content", icon: BookOpen },
 ];
 

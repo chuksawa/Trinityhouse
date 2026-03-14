@@ -7,9 +7,9 @@ const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const DEFAULT_NAV_BY_ROLE: Record<string, string[] | null> = {
   superuser: null,
   admin: null,
-  senior_staff: ["/home", "/dashboard", "/dashboard/people", "/dashboard/groups", "/dashboard/events", "/dashboard/communication", "/dashboard/content"],
-  staff: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/events", "/dashboard/communication"],
-  user: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"],
+  senior_staff: ["/home", "/dashboard", "/dashboard/people", "/dashboard/groups", "/dashboard/events", "/dashboard/communication", "/dashboard/messages", "/dashboard/content"],
+  staff: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/events", "/dashboard/communication", "/dashboard/messages"],
+  user: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication", "/dashboard/messages"],
 };
 
 /** Redirects non-admin users to /dashboard if they hit a path not in their allowed nav. */

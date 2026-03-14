@@ -14,6 +14,7 @@ const ALL_PAGES = [
   { href: "/dashboard/events", label: "Events" },
   { href: "/dashboard/giving", label: "Giving" },
   { href: "/dashboard/communication", label: "Communication" },
+  { href: "/dashboard/messages", label: "Messages" },
   { href: "/dashboard/content", label: "Content" },
   { href: "/dashboard/settings", label: "Settings" },
 ] as const;
@@ -31,9 +32,9 @@ const ROLE_CONFIG: { key: string; label: string; description: string; icon: type
 const DEFAULT_BY_ROLE: Record<string, string[]> = {
   superuser: [...ALL_HREFS],
   admin: [...ALL_HREFS],
-  senior_staff: ["/home", "/dashboard", "/dashboard/people", "/dashboard/groups", "/dashboard/events", "/dashboard/communication", "/dashboard/content"],
-  staff: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/events", "/dashboard/communication"],
-  user: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication"],
+  senior_staff: ["/home", "/dashboard", "/dashboard/people", "/dashboard/groups", "/dashboard/events", "/dashboard/communication", "/dashboard/messages", "/dashboard/content"],
+  staff: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/events", "/dashboard/communication", "/dashboard/messages"],
+  user: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication", "/dashboard/messages"],
 };
 
 export default function VisibilitySettingsPage() {
