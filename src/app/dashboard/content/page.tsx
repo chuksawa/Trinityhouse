@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Plus, Play, Share2, Bookmark, Download, Globe } from "lucide-react";
+import { Plus, Play, Share2, Bookmark, Download, Globe, Pencil, Trash2 } from "lucide-react";
 import Modal from "@/components/modal";
 import { formatDate, getVideoEmbedUrl } from "@/lib/utils";
 
@@ -38,6 +38,19 @@ export default function ContentPage() {
   const [uploadVideoUrl, setUploadVideoUrl] = useState("");
   const [uploadSaving, setUploadSaving] = useState(false);
   const [uploadError, setUploadError] = useState("");
+
+  const [editingSermon, setEditingSermon] = useState<DashboardSermon | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editSpeaker, setEditSpeaker] = useState("");
+  const [editSeries, setEditSeries] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editDuration, setEditDuration] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editVideoUrl, setEditVideoUrl] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   function loadSermons() {
     fetch(`${BASE_PATH}/api/sermons`, { credentials: "include" })
@@ -138,6 +151,87 @@ export default function ContentPage() {
       loadSermons();
     } finally {
       setUploadSaving(false);
+    }
+  }
+
+  function openEdit(sermon: DashboardSermon) {
+    setEditingSermon(sermon);
+    setEditTitle(sermon.title);
+    setEditSpeaker(sermon.speaker);
+    setEditSeries(sermon.series);
+    setEditDate(sermon.date.slice(0, 10));
+    setEditDuration(sermon.duration ?? "");
+    setEditDescription(sermon.description ?? "");
+    setEditVideoUrl(sermon.videoUrl ?? "");
+    setEditError("");
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSermon) return;
+    setEditError("");
+    if (!editTitle.trim() || !editSpeaker.trim() || !editSeries.trim() || !editDate.trim()) {
+      setEditError("Title, speaker, series, and date are required.");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const res = await fetch(`${BASE_PATH}/api/sermons/${editingSermon.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          speaker: editSpeaker.trim(),
+          series: editSeries.trim(),
+          date: editDate.trim(),
+          duration: editDuration.trim() || undefined,
+          description: editDescription.trim() || undefined,
+          video_url: editVideoUrl.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setEditError(data.error || "Failed to update sermon");
+        return;
+      }
+      setSermons((prev) =>
+        prev.map((s) =>
+          s.id === editingSermon.id
+            ? {
+                ...s,
+                title: editTitle.trim(),
+                speaker: editSpeaker.trim(),
+                series: editSeries.trim(),
+                date: editDate.trim(),
+                duration: editDuration.trim(),
+                description: editDescription.trim(),
+                videoUrl: editVideoUrl.trim() || undefined,
+              }
+            : s
+        )
+      );
+      setEditingSermon(null);
+      setSelectedSermon((prev) => (prev?.id === editingSermon.id ? { ...prev, title: editTitle.trim(), speaker: editSpeaker.trim(), series: editSeries.trim(), date: editDate.trim(), duration: editDuration.trim(), description: editDescription.trim(), videoUrl: editVideoUrl.trim() || undefined } : prev));
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`${BASE_PATH}/api/sermons/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        setSermons((prev) => prev.filter((s) => s.id !== id));
+        setSelectedSermon((prev) => (prev?.id === id ? null : prev));
+        setDeleteConfirmId(null);
+      }
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -258,6 +352,104 @@ export default function ContentPage() {
         </form>
       </Modal>
 
+      {/* Edit sermon modal */}
+      <Modal
+        open={!!editingSermon}
+        onClose={() => !editSaving && setEditingSermon(null)}
+        title="Edit sermon"
+        wide
+      >
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Title *</label>
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="input mt-1 w-full"
+              placeholder="e.g. Unshakeable Faith"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Speaker *</label>
+              <input
+                type="text"
+                value={editSpeaker}
+                onChange={(e) => setEditSpeaker(e.target.value)}
+                className="input mt-1 w-full"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Series *</label>
+              <input
+                type="text"
+                value={editSeries}
+                onChange={(e) => setEditSeries(e.target.value)}
+                className="input mt-1 w-full"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Date *</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                className="input mt-1 w-full"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Duration</label>
+              <input
+                type="text"
+                value={editDuration}
+                onChange={(e) => setEditDuration(e.target.value)}
+                className="input mt-1 w-full"
+                placeholder="e.g. 42 min"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              className="input mt-1 w-full min-h-[80px]"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Video URL</label>
+            <input
+              type="url"
+              value={editVideoUrl}
+              onChange={(e) => setEditVideoUrl(e.target.value)}
+              className="input mt-1 w-full"
+              placeholder="e.g. https://youtube.com/watch?v=... or Vimeo link"
+            />
+          </div>
+          {editError && <p className="text-sm text-red-600">{editError}</p>}
+          <div className="flex gap-3 pt-2">
+            <button type="submit" disabled={editSaving} className="btn-primary">
+              {editSaving ? "Saving…" : "Save changes"}
+            </button>
+            <button
+              type="button"
+              onClick={() => !editSaving && setEditingSermon(null)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {loading ? (
         <p className="py-8 text-center text-gray-500">Loading content…</p>
       ) : (
@@ -265,7 +457,13 @@ export default function ContentPage() {
         <div className="flex-1 space-y-8">
           {/* Featured / Latest Sermon Hero */}
           {latestSermon && (
-            <div className="card overflow-hidden">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedSermon(latestSermon)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedSermon(latestSermon); } }}
+              className="card overflow-hidden cursor-pointer transition-all hover:shadow-md hover:ring-2 hover:ring-brand-500/20"
+            >
               <div className="relative aspect-video w-full bg-gradient-to-br from-brand-600 via-brand-700 to-slate-800">
                 {latestSermon.videoUrl && getVideoEmbedUrl(latestSermon.videoUrl) ? (
                   <iframe
@@ -311,7 +509,7 @@ export default function ContentPage() {
                     Save
                   </button>
                 </div>
-                <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
+                <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4" onClick={(e) => e.stopPropagation()}>
                   <input
                     id={`show-public-${latestSermon.id}`}
                     type="checkbox"
@@ -489,17 +687,51 @@ export default function ContentPage() {
               </label>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn-primary">
+              <button
+                type="button"
+                onClick={() => { setEditingSermon(current); openEdit(current); }}
+                className="btn-primary"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </button>
+              {deleteConfirmId === current.id ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Delete this sermon?</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(current.id)}
+                    disabled={deletingId === current.id}
+                    className="btn-secondary border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                  >
+                    {deletingId === current.id ? "Deleting…" : "Yes, delete"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmId(null)}
+                    disabled={!!deletingId}
+                    className="btn-ghost"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmId(current.id)}
+                  className="btn-ghost text-red-600 hover:bg-red-50 hover:text-red-700"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              )}
+              <button type="button" className="btn-secondary">
                 <Share2 className="h-4 w-4" />
                 Share
               </button>
-              <button type="button" className="btn-secondary">
+              <button type="button" className="btn-ghost">
                 <Bookmark className="h-4 w-4" />
                 Save
-              </button>
-              <button type="button" className="btn-ghost">
-                <Download className="h-4 w-4" />
-                Download Notes
               </button>
             </div>
           </div>
