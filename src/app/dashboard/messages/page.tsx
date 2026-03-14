@@ -58,6 +58,8 @@ export default function MessagesPage() {
 
   useEffect(() => {
     load();
+    // Mark all messages as read when visiting the page so the bell clears
+    fetch(`${BASE_PATH}/api/messages/mark-read`, { method: "POST", credentials: "include" }).catch(() => {});
   }, []);
 
   async function handleSend(e: React.FormEvent) {

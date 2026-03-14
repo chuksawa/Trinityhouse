@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, Search, Home, Settings, CalendarDays, PanelTop, PanelLeft, Shield, Church, Menu } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useLayoutMode } from "@/contexts/layout-mode-context";
 import { dashboardNavItems, dashboardBottomItems } from "@/lib/dashboard-nav";
@@ -17,7 +17,7 @@ const DEFAULT_NAV_BY_ROLE: Record<string, string[] | null> = {
   user: ["/home", "/dashboard", "/dashboard/groups", "/dashboard/communication", "/dashboard/messages"],
 };
 
-type NotificationItem = { id: string; title: string; body: string; read: boolean; createdAt: string };
+type NotificationItem = { id: string; title: string; body: string; read: boolean; createdAt: string; type?: "message" };
 type SessionUser = { email?: string; role?: string } | null;
 
 function displayNameFromEmail(email: string): string {
@@ -44,8 +44,16 @@ type TopbarProps = {
   isMobile?: boolean;
 };
 
+async function refetchNotifications(basePath: string): Promise<NotificationItem[]> {
+  const res = await fetch(`${basePath}/api/notifications/`, { credentials: "include" });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data.notifications) ? data.notifications : [];
+}
+
 export default function Topbar({ onOpenMobileMenu, isMobile }: TopbarProps = {}) {
   const pathname = usePathname();
+  const router = useRouter();
   const { layoutMode, toggleLayoutMode } = useLayoutMode();
   const [searchOpen, setSearchOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
@@ -115,6 +123,28 @@ export default function Topbar({ onOpenMobileMenu, isMobile }: TopbarProps = {})
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const onNotificationClick = useCallback(
+    async (n: NotificationItem) => {
+      if (n.type === "message") {
+        try {
+          await fetch(`${BASE_PATH}/api/messages/${n.id}`, {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ read: true }),
+          });
+          const next = await refetchNotifications(BASE_PATH);
+          setNotifications(next);
+        } catch {
+          // keep state as-is on error
+        }
+        setBellOpen(false);
+        router.push(`${BASE_PATH}/dashboard/messages`);
+      }
+    },
+    [router]
+  );
+
   const isTopbarMode = layoutMode === "topbar";
   const dark = isTopbarMode;
   const topbarLabel = (label: string) => label.split(/\s+/)[0];
@@ -163,9 +193,25 @@ export default function Topbar({ onOpenMobileMenu, isMobile }: TopbarProps = {})
                   ) : (
                     <ul className="space-y-2">
                       {notifications.map((n) => (
-                        <li key={n.id} className={n.read ? "text-gray-500" : "font-medium text-gray-900"}>
-                          <p>{n.title}</p>
-                          {n.body && <p className="text-xs text-gray-400">{n.body}</p>}
+                        <li key={n.id}>
+                          {n.type === "message" ? (
+                            <button
+                              type="button"
+                              onClick={() => onNotificationClick(n)}
+                              className={cn(
+                                "w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-gray-100",
+                                n.read ? "text-gray-500" : "font-medium text-gray-900"
+                              )}
+                            >
+                              <p>{n.title}</p>
+                              {n.body && <p className="text-xs text-gray-400">{n.body}</p>}
+                            </button>
+                          ) : (
+                            <div className={n.read ? "text-gray-500" : "font-medium text-gray-900"}>
+                              <p>{n.title}</p>
+                              {n.body && <p className="text-xs text-gray-400">{n.body}</p>}
+                            </div>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -372,9 +418,25 @@ export default function Topbar({ onOpenMobileMenu, isMobile }: TopbarProps = {})
                 ) : (
                   <ul className="space-y-2">
                     {notifications.map((n) => (
-                      <li key={n.id} className={n.read ? "text-gray-500" : "font-medium text-gray-900"}>
-                        <p>{n.title}</p>
-                        {n.body && <p className="text-xs text-gray-400">{n.body}</p>}
+                      <li key={n.id}>
+                        {n.type === "message" ? (
+                          <button
+                            type="button"
+                            onClick={() => onNotificationClick(n)}
+                            className={cn(
+                              "w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-gray-100",
+                              n.read ? "text-gray-500" : "font-medium text-gray-900"
+                            )}
+                          >
+                            <p>{n.title}</p>
+                            {n.body && <p className="text-xs text-gray-400">{n.body}</p>}
+                          </button>
+                        ) : (
+                          <div className={n.read ? "text-gray-500" : "font-medium text-gray-900"}>
+                            <p>{n.title}</p>
+                            {n.body && <p className="text-xs text-gray-400">{n.body}</p>}
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
