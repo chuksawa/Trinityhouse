@@ -37,6 +37,7 @@ export default function Sidebar({ isMobile, open = false, onClose, onNavigate }:
   const [userRole, setUserRole] = useState<string | null>(null);
   const [navVisibility, setNavVisibility] = useState<Record<string, string[]>>({});
 
+  const isSuperuser = userRole === "superuser";
   const allowedHrefs =
     userRole && navVisibility[userRole] !== undefined
       ? navVisibility[userRole]
