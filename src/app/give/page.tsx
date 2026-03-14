@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import PublicHeader from "@/components/public-header";
-import { Heart, ExternalLink } from "lucide-react";
+import { Heart, ExternalLink, CreditCard } from "lucide-react";
+import type PaystackPopType from "@paystack/inline-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
-const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() || "";
+const PAYSTACK_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY?.trim() || "";
+const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() || "";
 
 const FUND_OPTIONS: { value: string; label: string }[] = [
   { value: "tithe", label: "Tithe" },
@@ -19,28 +21,22 @@ const FUND_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const PRESET_AMOUNTS_NGN = [1000, 2000, 5000, 10000, 20000, 50000];
-
 const CURRENCY = { code: "ngn", symbol: "₦", name: "Nigerian Naira" } as const;
 const MIN_AMOUNT_NGN = 500;
 
-// Nigeria default: Country = Nigeria, so no US/ZIP and phone format is appropriate
+/* ── Stripe Payment Form (secondary, international cards) ── */
+
 const PAYMENT_ELEMENT_OPTIONS = {
   defaultValues: {
-    billingDetails: {
-      address: {
-        country: "NG",
-      },
-    },
+    billingDetails: { address: { country: "NG" } },
   },
   layout: { type: "tabs" as const, defaultCollapsed: false },
 };
 
-function PaymentForm({
-  clientSecret,
+function StripePaymentForm({
   amountLabel,
   onCancel,
 }: {
-  clientSecret: string;
   amountLabel: string;
   onCancel: () => void;
 }) {
@@ -60,15 +56,11 @@ function PaymentForm({
         confirmParams: {
           return_url: `${typeof window !== "undefined" ? window.location.origin : ""}${BASE_PATH}/give?success=1`,
           payment_method_data: {
-            billing_details: {
-              address: { country: "NG" },
-            },
+            billing_details: { address: { country: "NG" } },
           },
         },
       });
-      if (confirmError) {
-        setError(confirmError.message || "Payment failed");
-      }
+      if (confirmError) setError(confirmError.message || "Payment failed");
     } catch {
       setError("Something went wrong");
     }
@@ -78,14 +70,12 @@ function PaymentForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <p className="text-sm text-gray-600">
-        You're giving <strong>{amountLabel}</strong>. Card and billing details below — <strong>Country is set to Nigeria</strong>.
+        Paying <strong>{amountLabel}</strong> with international card.
       </p>
       <PaymentElement options={PAYMENT_ELEMENT_OPTIONS} />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-3">
-        <button type="button" onClick={onCancel} className="btn-secondary flex-1">
-          Back
-        </button>
+        <button type="button" onClick={onCancel} className="btn-secondary flex-1">Back</button>
         <button type="submit" disabled={!stripe || loading} className="btn-primary flex-1">
           {loading ? "Processing…" : "Pay now"}
         </button>
@@ -93,6 +83,8 @@ function PaymentForm({
     </form>
   );
 }
+
+/* ── Main Give Page ── */
 
 export default function GivePage() {
   const [config, setConfig] = useState<{
@@ -105,8 +97,11 @@ export default function GivePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [canceled, setCanceled] = useState(false);
+
+  // Stripe state (secondary)
+  const [showStripe, setShowStripe] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [stripePromise] = useState(() => (PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null));
+  const [stripePromise] = useState(() => (STRIPE_PK ? loadStripe(STRIPE_PK) : null));
 
   useEffect(() => {
     let cancelled = false;
@@ -129,12 +124,66 @@ export default function GivePage() {
     setCanceled(params.get("canceled") === "1");
   }, []);
 
-  async function handleContinueToPay(e: React.FormEvent) {
+  const parsedAmount = useCallback(() => {
+    const value = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0;
+    return Math.round(value * 100); // kobo
+  }, [amount]);
+
+  /* ── Paystack (primary) ── */
+  async function handlePaystack(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const value = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0;
-    const amountSmallestUnit = Math.round(value * 100);
-    if (amountSmallestUnit < 50000) {
+    const amountKobo = parsedAmount();
+    if (amountKobo < MIN_AMOUNT_NGN * 100) {
+      setError(`Minimum amount is ${CURRENCY.symbol}${MIN_AMOUNT_NGN.toLocaleString()}`);
+      return;
+    }
+    if (!PAYSTACK_KEY) {
+      setError("Paystack is not configured.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { default: PaystackPop } = await import("@paystack/inline-js") as { default: new () => PaystackPopType };
+      const popup = new PaystackPop();
+      popup.newTransaction({
+        key: PAYSTACK_KEY,
+        amount: amountKobo,
+        currency: "NGN",
+        onSuccess: async (transaction: { reference: string }) => {
+          try {
+            const res = await fetch(`${BASE_PATH}/api/giving/paystack-verify`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ reference: transaction.reference, fund }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.verified) {
+              setSuccess(true);
+            } else {
+              setError(data.error || "Payment verification failed");
+            }
+          } catch {
+            setError("Could not verify payment");
+          }
+          setLoading(false);
+        },
+        onCancel: () => {
+          setLoading(false);
+        },
+      });
+    } catch {
+      setError("Could not open payment window");
+      setLoading(false);
+    }
+  }
+
+  /* ── Stripe (secondary) ── */
+  async function handleStripe() {
+    setError("");
+    const amountKobo = parsedAmount();
+    if (amountKobo < MIN_AMOUNT_NGN * 100) {
       setError(`Minimum amount is ${CURRENCY.symbol}${MIN_AMOUNT_NGN.toLocaleString()}`);
       return;
     }
@@ -144,7 +193,7 @@ export default function GivePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ amountCents: amountSmallestUnit, fund, currency: CURRENCY.code }),
+        body: JSON.stringify({ amountCents: amountKobo, fund, currency: CURRENCY.code }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -154,6 +203,7 @@ export default function GivePage() {
       }
       if (data.clientSecret) {
         setClientSecret(data.clientSecret);
+        setShowStripe(true);
       } else {
         setError("No payment session returned");
       }
@@ -163,7 +213,11 @@ export default function GivePage() {
     setLoading(false);
   }
 
-  const amountLabel = amount ? `${CURRENCY.symbol}${Number(amount.replace(/[^0-9.]/g, "") || 0).toLocaleString()} — ${fund.replace(/_/g, " ")}` : "";
+  const amountLabel = amount
+    ? `${CURRENCY.symbol}${Number(amount.replace(/[^0-9.]/g, "") || 0).toLocaleString()} — ${fund.replace(/_/g, " ")}`
+    : "";
+
+  const showMainForm = !success && !showStripe;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -192,11 +246,14 @@ export default function GivePage() {
             </div>
           )}
 
-          {!success && !clientSecret && (
+          {/* ── Main form: amount + fund + Pay buttons ── */}
+          {showMainForm && (
             <>
-              <form onSubmit={handleContinueToPay} className="mt-8 space-y-6">
+              <form onSubmit={handlePaystack} className="mt-8 space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Amount ({CURRENCY.symbol} {CURRENCY.name})</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Amount ({CURRENCY.symbol} {CURRENCY.name})
+                  </label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {PRESET_AMOUNTS_NGN.map((n) => (
                       <button
@@ -236,19 +293,40 @@ export default function GivePage() {
                     ))}
                   </select>
                 </div>
+
                 {error && <p className="text-sm text-red-600">{error}</p>}
-                <button type="submit" disabled={loading || !PUBLISHABLE_KEY} className="btn-primary w-full">
-                  {loading ? "Loading…" : "Continue to pay (card)"}
+
+                {/* Primary: Paystack */}
+                <button
+                  type="submit"
+                  disabled={loading || !PAYSTACK_KEY}
+                  className="btn-primary w-full"
+                >
+                  {loading ? "Opening payment…" : "Pay now (card, bank transfer, USSD, mobile money)"}
                 </button>
               </form>
 
+              {/* Secondary: Stripe international card */}
+              {STRIPE_PK && (
+                <button
+                  type="button"
+                  onClick={handleStripe}
+                  disabled={loading}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-6 py-3.5 text-sm font-semibold text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Pay with international card (Visa, Mastercard)
+                </button>
+              )}
+
               <p className="mt-4 text-center text-sm text-gray-500">
-                Pay with <strong>card</strong>. Country and phone will default to <strong>Nigeria</strong>. You can also give via direct bank transfer — contact the church office for account details.
+                All Nigerian payment methods are supported — card, bank transfer, USSD, and mobile money. You can also give via direct bank transfer — contact the church office for account details.
               </p>
             </>
           )}
 
-          {!success && clientSecret && stripePromise && (
+          {/* ── Stripe Payment Element (shown when "international card" is chosen) ── */}
+          {showStripe && clientSecret && stripePromise && (
             <div className="mt-8">
               <Elements
                 stripe={stripePromise}
@@ -257,21 +335,15 @@ export default function GivePage() {
                   appearance: { theme: "stripe", variables: { borderRadius: "8px" } },
                 }}
               >
-                <PaymentForm
-                  clientSecret={clientSecret}
+                <StripePaymentForm
                   amountLabel={amountLabel}
-                  onCancel={() => setClientSecret(null)}
+                  onCancel={() => { setShowStripe(false); setClientSecret(null); }}
                 />
               </Elements>
             </div>
           )}
 
-          {!PUBLISHABLE_KEY && !clientSecret && (
-            <p className="mt-4 text-sm text-amber-700">
-              In-app card payment is not configured (missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY). Use the external link below if available.
-            </p>
-          )}
-
+          {/* External link */}
           {config.givingExternalUrl && (
             <div className="mt-8 border-t border-gray-200 pt-8">
               <p className="text-sm text-gray-600">Prefer to give through our payment partner?</p>
@@ -294,7 +366,7 @@ export default function GivePage() {
           )}
 
           <p className="mt-8 text-center text-xs text-gray-400">
-            Card payments are processed securely. You can also{" "}
+            Payments are processed securely. You can also{" "}
             <Link href="/login" className="text-brand-600 hover:underline">sign in</Link> so your giving is linked to your profile.
           </p>
         </div>
