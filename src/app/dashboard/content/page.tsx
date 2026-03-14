@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Plus, Play, Share2, Bookmark, Download, Globe } from "lucide-react";
 import Modal from "@/components/modal";
-import { formatDate } from "@/lib/utils";
+import { formatDate, getVideoEmbedUrl } from "@/lib/utils";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
@@ -17,6 +17,7 @@ type DashboardSermon = {
   views: number;
   description: string;
   showPublic: boolean;
+  videoUrl?: string;
 };
 
 /** Reading plans come from API or CMS when available; no seeded data. */
@@ -34,6 +35,7 @@ export default function ContentPage() {
   const [uploadDate, setUploadDate] = useState("");
   const [uploadDuration, setUploadDuration] = useState("");
   const [uploadDescription, setUploadDescription] = useState("");
+  const [uploadVideoUrl, setUploadVideoUrl] = useState("");
   const [uploadSaving, setUploadSaving] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
@@ -117,6 +119,7 @@ export default function ContentPage() {
           date: uploadDate.trim(),
           duration: uploadDuration.trim() || undefined,
           description: uploadDescription.trim() || undefined,
+          video_url: uploadVideoUrl.trim() || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -131,6 +134,7 @@ export default function ContentPage() {
       setUploadDate("");
       setUploadDuration("");
       setUploadDescription("");
+      setUploadVideoUrl("");
       loadSermons();
     } finally {
       setUploadSaving(false);
@@ -227,6 +231,17 @@ export default function ContentPage() {
               rows={3}
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Video URL</label>
+            <input
+              type="url"
+              value={uploadVideoUrl}
+              onChange={(e) => setUploadVideoUrl(e.target.value)}
+              className="input mt-1 w-full"
+              placeholder="e.g. https://youtube.com/watch?v=... or Vimeo link"
+            />
+            <p className="mt-1 text-xs text-gray-500">Optional. YouTube or Vimeo link — the video will show where the sermon is displayed.</p>
+          </div>
           {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
           <div className="flex gap-3 pt-2">
             <button type="submit" disabled={uploadSaving} className="btn-primary">
@@ -252,14 +267,23 @@ export default function ContentPage() {
           {latestSermon && (
             <div className="card overflow-hidden">
               <div className="relative aspect-video w-full bg-gradient-to-br from-brand-600 via-brand-700 to-slate-800">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <button
-                    type="button"
-                    className="flex h-20 w-20 items-center justify-center rounded-full bg-white/90 text-brand-600 shadow-lg transition-all hover:scale-110 hover:bg-white"
-                  >
-                    <Play className="h-10 w-10 ml-1" fill="currentColor" />
-                  </button>
-                </div>
+                {latestSermon.videoUrl && getVideoEmbedUrl(latestSermon.videoUrl) ? (
+                  <iframe
+                    src={getVideoEmbedUrl(latestSermon.videoUrl)!}
+                    title={latestSermon.title}
+                    className="absolute inset-0 h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/90">
+                      <Play className="h-12 w-12" fill="currentColor" />
+                      <p className="text-sm">No video linked</p>
+                      <p className="text-xs text-white/70">Add a Video URL when adding a sermon to show it here.</p>
+                    </div>
+                  </>
+                )}
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
                   <span className="badge-purple">{latestSermon.series}</span>
                   <h2 className="mt-2 text-2xl font-bold text-white">{latestSermon.title}</h2>
@@ -317,11 +341,22 @@ export default function ContentPage() {
                   className="card overflow-hidden p-0 text-left transition-all hover:shadow-md hover:ring-2 hover:ring-brand-500/20"
                 >
                   <div className="relative aspect-video w-full bg-gradient-to-br from-slate-600 to-slate-800">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm">
-                        <Play className="h-7 w-7 ml-1" fill="currentColor" />
+                    {sermon.videoUrl && getVideoEmbedUrl(sermon.videoUrl) ? (
+                      <iframe
+                        src={getVideoEmbedUrl(sermon.videoUrl)!}
+                        title={sermon.title}
+                        className="absolute inset-0 h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-1 text-white/80">
+                          <Play className="h-7 w-7 ml-1" fill="currentColor" />
+                          <span className="text-[10px]">No video</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <span className="absolute top-2 left-2 badge-purple text-[10px]">
                       {sermon.series}
                     </span>
@@ -413,14 +448,20 @@ export default function ContentPage() {
           return (
           <div className="space-y-6">
             <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-600 to-slate-800">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <button
-                  type="button"
-                  className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-brand-600 shadow-lg transition-all hover:scale-105 hover:bg-white"
-                >
-                  <Play className="h-8 w-8 ml-1" fill="currentColor" />
-                </button>
-              </div>
+              {current.videoUrl && getVideoEmbedUrl(current.videoUrl) ? (
+                <iframe
+                  src={getVideoEmbedUrl(current.videoUrl)!}
+                  title={current.title}
+                  className="absolute inset-0 h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-400">
+                  <Play className="h-12 w-12" fill="currentColor" />
+                  <p className="text-sm">No video linked for this sermon.</p>
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="badge-purple">{current.series}</span>

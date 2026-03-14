@@ -5,7 +5,7 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-type Row = { id: string; title: string; speaker: string; series: string; date: string; duration: string | null; views: number; description: string | null; show_public: boolean | null };
+type Row = { id: string; title: string; speaker: string; series: string; date: string; duration: string | null; views: number; description: string | null; show_public: boolean | null; video_url?: string | null };
 
 /** GET: List all sermons for dashboard (auth required). */
 export async function GET() {
@@ -18,13 +18,13 @@ export async function GET() {
     let rows: Row[];
     try {
       const result = await query<Row>(
-        `SELECT id, title, speaker, series, date::text, duration, COALESCE(views, 0) AS views, description, show_public
+        `SELECT id, title, speaker, series, date::text, duration, COALESCE(views, 0) AS views, description, show_public, video_url
          FROM sermons ORDER BY date DESC`
       );
       rows = result.rows;
     } catch (colErr: unknown) {
       const m = colErr instanceof Error ? colErr.message : String(colErr);
-      if (m.includes("show_public") || m.includes("does not exist")) {
+      if (m.includes("show_public") || m.includes("video_url") || m.includes("does not exist")) {
         const result = await query<Row>(
           `SELECT id, title, speaker, series, date::text, duration, COALESCE(views, 0) AS views, description, NULL::boolean AS show_public
            FROM sermons ORDER BY date DESC`
@@ -44,6 +44,7 @@ export async function GET() {
       views: r.views,
       description: r.description ?? "",
       showPublic: r.show_public ?? true,
+      videoUrl: r.video_url ?? undefined,
     }));
     return NextResponse.json({ sermons });
   } catch (e) {
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
     const dateStr = (body.date ?? "").toString().trim();
     const duration = (body.duration ?? "").toString().trim();
     const description = (body.description ?? "").toString().trim();
+    const videoUrl = typeof body.video_url === "string" ? body.video_url.trim() || null : null;
 
     if (!title || !speaker || !series || !dateStr) {
       return NextResponse.json(
@@ -82,9 +84,9 @@ export async function POST(req: Request) {
 
     const id = crypto.randomUUID();
     await query(
-      `INSERT INTO sermons (id, title, speaker, series, date, duration, views, description)
-       VALUES ($1, $2, $3, $4, $5::date, $6, 0, $7)`,
-      [id, title, speaker, series, dateOnly, duration || null, description || null]
+      `INSERT INTO sermons (id, title, speaker, series, date, duration, views, description, video_url)
+       VALUES ($1, $2, $3, $4, $5::date, $6, 0, $7, $8)`,
+      [id, title, speaker, series, dateOnly, duration || null, description || null, videoUrl]
     );
     return NextResponse.json({ ok: true, id });
   } catch (e) {

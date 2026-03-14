@@ -51,3 +51,25 @@ export function percentChange(current: number, previous: number): number {
   if (previous === 0) return 0;
   return Math.round(((current - previous) / previous) * 100);
 }
+
+/** Return embeddable iframe URL for YouTube or Vimeo; otherwise null (use link instead). */
+export function getVideoEmbedUrl(url: string): string | null {
+  const u = url.trim();
+  if (!u) return null;
+  try {
+    const parsed = new URL(u);
+    if (parsed.hostname.replace("www.", "") === "youtube.com" && parsed.searchParams.get("v")) {
+      return `https://www.youtube.com/embed/${parsed.searchParams.get("v")}`;
+    }
+    if (parsed.hostname === "youtu.be" && parsed.pathname.slice(1)) {
+      return `https://www.youtube.com/embed/${parsed.pathname.slice(1).split("/")[0]}`;
+    }
+    if (parsed.hostname.replace("www.", "") === "vimeo.com") {
+      const id = parsed.pathname.replace(/^\//, "").split("/")[0];
+      if (id) return `https://player.vimeo.com/video/${id}`;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}

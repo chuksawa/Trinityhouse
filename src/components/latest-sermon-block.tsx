@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Play, ArrowRight } from "lucide-react";
+import { getVideoEmbedUrl } from "@/lib/utils";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
@@ -15,6 +16,7 @@ type Sermon = {
   duration: string;
   views: number;
   description: string;
+  videoUrl?: string;
 };
 
 export default function LatestSermonBlock() {
@@ -66,13 +68,23 @@ export default function LatestSermonBlock() {
   return (
     <>
       <div className="mt-8 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 shadow-xl">
-        <div className="relative aspect-video flex items-center justify-center bg-brand-900/50">
-          <button
-            type="button"
-            className="flex h-20 w-20 items-center justify-center rounded-full bg-white/95 text-brand-600 shadow-lg transition-transform hover:scale-105"
-          >
-            <Play className="h-10 w-10 ml-1" fill="currentColor" />
-          </button>
+        <div className="relative aspect-video bg-brand-900/50">
+          {latestSermon.videoUrl && getVideoEmbedUrl(latestSermon.videoUrl) ? (
+            <iframe
+              src={getVideoEmbedUrl(latestSermon.videoUrl)!}
+              title={latestSermon.title}
+              className="absolute inset-0 h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2 text-brand-200">
+                <Play className="h-10 w-10 ml-1" fill="currentColor" />
+                <span className="text-sm">No video linked</span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="p-6">
           <span className="badge badge-purple">{latestSermon.series}</span>

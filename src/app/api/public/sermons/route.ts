@@ -3,7 +3,7 @@ import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-type Row = { id: string; title: string; speaker: string; series: string; date: string; duration: string | null; views: number; description: string | null };
+type Row = { id: string; title: string; speaker: string; series: string; date: string; duration: string | null; views: number; description: string | null; video_url?: string | null };
 
 /** Public list of sermons (no auth). Only sermons with show_public = true. */
 export async function GET() {
@@ -11,7 +11,7 @@ export async function GET() {
     let rows: Row[];
     try {
       const result = await query<Row>(
-        `SELECT id, title, speaker, series, date::text, duration, COALESCE(views, 0) AS views, description
+        `SELECT id, title, speaker, series, date::text, duration, COALESCE(views, 0) AS views, description, video_url
          FROM sermons
          WHERE COALESCE(show_public, true) = true
          ORDER BY date DESC`
@@ -19,7 +19,7 @@ export async function GET() {
       rows = result.rows;
     } catch (colErr: unknown) {
       const m = colErr instanceof Error ? colErr.message : String(colErr);
-      if (m.includes("show_public") || m.includes("does not exist")) {
+      if (m.includes("show_public") || m.includes("video_url") || m.includes("does not exist")) {
         const result = await query<Row>(
           `SELECT id, title, speaker, series, date::text, duration, COALESCE(views, 0) AS views, description
            FROM sermons ORDER BY date DESC`
@@ -38,6 +38,7 @@ export async function GET() {
       duration: r.duration ?? "",
       views: r.views,
       description: r.description ?? "",
+      videoUrl: r.video_url ?? undefined,
     }));
     return NextResponse.json({ sermons });
   } catch (e) {
