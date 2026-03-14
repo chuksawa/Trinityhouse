@@ -74,13 +74,14 @@ export async function POST(req: Request) {
       branding_settings: { display_name: "Trinity House" },
     };
 
-    // NGN: use card only so checkout works on accounts without Nigerian payment methods enabled; locale keeps Nigeria as default.
+    // NGN: use card only so checkout works. Stripe does not support en-NG; use en-GB for non-US format (no ZIP).
     const paymentMethodTypes = ["card"] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[];
+    const locale = isNgn ? "en-GB" : undefined; // en-NG is not in Stripe's supported locale list
 
     const session = await stripe.checkout.sessions.create({
       ...baseParams,
       payment_method_types: paymentMethodTypes,
-      ...(isNgn && { locale: "en-NG" as Stripe.Checkout.SessionCreateParams.Locale }),
+      ...(locale && { locale: locale as Stripe.Checkout.SessionCreateParams.Locale }),
     });
 
     return NextResponse.json({ url: session.url });
