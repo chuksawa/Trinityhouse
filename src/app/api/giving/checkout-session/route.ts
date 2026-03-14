@@ -74,38 +74,14 @@ export async function POST(req: Request) {
       branding_settings: { display_name: "Trinity House" },
     };
 
-    // Try with Nigerian payment methods first; fall back to card-only if Stripe rejects (e.g. not enabled on account)
-    const paymentMethodOptions = isNgn
-      ? (["card", "ng_card", "ng_bank_transfer"] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[])
-      : (["card"] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[]);
+    // NGN: use card only so checkout works on accounts without Nigerian payment methods enabled; locale keeps Nigeria as default.
+    const paymentMethodTypes = ["card"] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[];
 
-    let session: Stripe.Checkout.Session;
-    try {
-      session = await stripe.checkout.sessions.create({
-        ...baseParams,
-        payment_method_types: paymentMethodOptions,
-        ...(isNgn && { locale: "en-NG" as Stripe.Checkout.SessionCreateParams.Locale }),
-      });
-    } catch (firstErr: unknown) {
-      const isStripeErr = firstErr && typeof firstErr === "object" && "type" in firstErr;
-      if (isNgn && isStripeErr && paymentMethodOptions.length > 1) {
-        try {
-          session = await stripe.checkout.sessions.create({
-            ...baseParams,
-            payment_method_types: ["card"],
-            ...(isNgn && { locale: "en-NG" as Stripe.Checkout.SessionCreateParams.Locale }),
-          });
-        } catch (fallbackErr) {
-          console.error("[giving/checkout-session] fallback failed", fallbackErr);
-          return NextResponse.json(
-            { error: "Could not start checkout. Please try again or use another payment option." },
-            { status: 500 }
-          );
-        }
-      } else {
-        throw firstErr;
-      }
-    }
+    const session = await stripe.checkout.sessions.create({
+      ...baseParams,
+      payment_method_types: paymentMethodTypes,
+      ...(isNgn && { locale: "en-NG" as Stripe.Checkout.SessionCreateParams.Locale }),
+    });
 
     return NextResponse.json({ url: session.url });
   } catch (e) {
