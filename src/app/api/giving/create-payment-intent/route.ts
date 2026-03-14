@@ -44,17 +44,12 @@ export async function POST(req: Request) {
       personId = rows[0]?.id ?? null;
     }
 
-    const origin = req.headers.get("origin") || req.headers.get("referer") || "";
-    const baseUrl = origin.replace(/\/$/, "") || "https://www.9logiclabs.com";
-    const path = BASE_PATH.replace(/^\//, "") ? `/${BASE_PATH.replace(/^\//, "")}` : "";
-    const returnUrl = `${baseUrl}${path}/give`;
-
+    // return_url is passed on the client when confirming (confirmParams.return_url), not when creating the PaymentIntent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountSmallest,
       currency,
       automatic_payment_methods: { enabled: true },
       metadata: { fund, person_id: personId ?? "" },
-      return_url: `${returnUrl}?success=1`,
     });
 
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });
