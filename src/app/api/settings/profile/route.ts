@@ -19,7 +19,9 @@ export async function GET() {
       service_times: unknown;
       website_url: string | null;
       show_events_public: boolean;
-    }>("SELECT id, name, address, phone, email, service_times, website_url, show_events_public FROM church_profile WHERE id = 1");
+      giving_external_url: string | null;
+      text_to_give_phone: string | null;
+    }>("SELECT id, name, address, phone, email, service_times, website_url, show_events_public, giving_external_url, text_to_give_phone FROM church_profile WHERE id = 1");
     const row = rows[0];
     if (!row) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     return NextResponse.json({
@@ -30,6 +32,8 @@ export async function GET() {
       serviceTimes: Array.isArray(row.service_times) ? row.service_times : [],
       websiteUrl: row.website_url ?? "",
       showEventsPublic: row.show_events_public,
+      givingExternalUrl: row.giving_external_url ?? "",
+      textToGivePhone: row.text_to_give_phone ?? "",
     });
   } catch (e) {
     console.error("[settings/profile GET]", e);
@@ -52,13 +56,16 @@ export async function POST(req: Request) {
     const serviceTimes = Array.isArray(body.serviceTimes) ? body.serviceTimes : [];
     const websiteUrl = (body.websiteUrl ?? "").trim();
     const showEventsPublic = Boolean(body.showEventsPublic);
+    const givingExternalUrl = (body.givingExternalUrl ?? "").trim();
+    const textToGivePhone = (body.textToGivePhone ?? "").trim();
 
     await query(
       `UPDATE church_profile SET
         name = $1, address = $2, phone = $3, email = $4,
-        service_times = $5, website_url = $6, show_events_public = $7, updated_at = NOW()
+        service_times = $5, website_url = $6, show_events_public = $7,
+        giving_external_url = $8, text_to_give_phone = $9, updated_at = NOW()
        WHERE id = 1`,
-      [name, address || null, phone || null, email || null, JSON.stringify(serviceTimes), websiteUrl || null, showEventsPublic]
+      [name, address || null, phone || null, email || null, JSON.stringify(serviceTimes), websiteUrl || null, showEventsPublic, givingExternalUrl || null, textToGivePhone || null]
     );
     return NextResponse.json({ ok: true });
   } catch (e) {

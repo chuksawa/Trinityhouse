@@ -76,7 +76,7 @@ export default function HomePage() {
               Create account
             </Link>
             <Link
-              href="/home#give"
+              href="/give"
               className="inline-flex items-center gap-2 rounded-xl border-2 border-emerald-400/60 bg-emerald-500/20 px-6 py-3.5 text-base font-semibold text-white backdrop-blur transition-all hover:bg-emerald-500/30"
             >
               <Heart className="h-5 w-5" />
@@ -238,7 +238,7 @@ export default function HomePage() {
             <div className="flex w-full flex-col gap-4 lg:w-80">
               <h3 className="text-lg font-semibold text-gray-900">Quick Links</h3>
               <Link
-                href="/login"
+                href="/give"
                 className="flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50/50 p-4 transition-colors hover:bg-gray-100"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
@@ -289,13 +289,12 @@ export default function HomePage() {
               Give with a grateful heart
             </h2>
             <p className="mt-3 text-gray-600">
-              Your generosity fuels our mission — local outreach, global missions, and caring for our community. Give one-time or set up recurring giving in the app.
+              Your generosity fuels our mission — local outreach, global missions, and caring for our community. Give one-time with a card or use our other options.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/login" className="btn-primary">
-                Give in the App
+              <Link href="/give" className="btn-primary">
+                Give now
               </Link>
-              <span className="text-sm text-gray-500">or text GIVE to (555) 100-0000</span>
             </div>
           </div>
         </div>

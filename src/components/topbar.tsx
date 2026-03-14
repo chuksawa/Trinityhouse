@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Search, Home, Settings, CalendarDays, PanelTop, PanelLeft, Shield, Church } from "lucide-react";
+import { Bell, Search, Home, Settings, CalendarDays, PanelTop, PanelLeft, Shield, Church, Menu } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useLayoutMode } from "@/contexts/layout-mode-context";
@@ -31,7 +31,12 @@ function formatRole(role: string): string {
   return "User";
 }
 
-export default function Topbar() {
+type TopbarProps = {
+  onOpenMobileMenu?: () => void;
+  isMobile?: boolean;
+};
+
+export default function Topbar({ onOpenMobileMenu, isMobile }: TopbarProps = {}) {
   const pathname = usePathname();
   const { layoutMode, toggleLayoutMode } = useLayoutMode();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -103,6 +108,77 @@ export default function Topbar() {
   const isTopbarMode = layoutMode === "topbar";
   const dark = isTopbarMode;
   const topbarLabel = (label: string) => label.split(/\s+/)[0];
+
+  if (isMobile && onOpenMobileMenu) {
+    return (
+      <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 bg-white/80 px-4 backdrop-blur-sm md:hidden">
+        <button
+          type="button"
+          onClick={onOpenMobileMenu}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          aria-label="Open menu"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+        <Link
+          href="/home"
+          className="flex min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white">
+            <Church className="h-4 w-4" />
+          </div>
+          <span className="truncate text-sm font-bold text-gray-900">Trinity House</span>
+        </Link>
+        <div className="flex shrink-0 items-center gap-1">
+          <div className="relative" ref={bellRef}>
+            <button
+              type="button"
+              onClick={() => setBellOpen((o) => !o)}
+              className="relative rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              title="Notifications"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
+              )}
+            </button>
+            {bellOpen && (
+              <div className="absolute right-0 top-full z-30 mt-1 w-72 rounded-xl border border-gray-200 bg-white py-2 shadow-lg">
+                <div className="border-b border-gray-100 px-4 py-2">
+                  <p className="text-sm font-semibold text-gray-900">Notifications</p>
+                </div>
+                <div className="max-h-48 overflow-y-auto px-4 py-3 text-sm text-gray-500">
+                  {notifications.length === 0 ? (
+                    "You're all caught up"
+                  ) : (
+                    <ul className="space-y-2">
+                      {notifications.map((n) => (
+                        <li key={n.id} className={n.read ? "text-gray-500" : "font-medium text-gray-900"}>
+                          <p>{n.title}</p>
+                          {n.body && <p className="text-xs text-gray-400">{n.body}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <Link
+                  href="/dashboard/settings/notifications"
+                  onClick={() => setBellOpen(false)}
+                  className="flex gap-2 px-4 py-2.5 text-sm font-medium text-brand-600 hover:bg-gray-50"
+                >
+                  <Settings className="h-4 w-4" />
+                  Manage notification preferences
+                </Link>
+              </div>
+            )}
+          </div>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
+            {user?.email ? initialsFromEmail(user.email) : "—"}
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header

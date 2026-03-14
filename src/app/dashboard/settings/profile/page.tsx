@@ -20,6 +20,8 @@ export default function ChurchProfileSettingsPage() {
   const [serviceTimes, setServiceTimes] = useState<ServiceTime[]>([]);
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [showEventsPublic, setShowEventsPublic] = useState(true);
+  const [givingExternalUrl, setGivingExternalUrl] = useState("");
+  const [textToGivePhone, setTextToGivePhone] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +38,8 @@ export default function ChurchProfileSettingsPage() {
         setServiceTimes(Array.isArray(data.serviceTimes) && data.serviceTimes.length ? data.serviceTimes : [{ day: "Sunday", times: "9:00 AM & 11:00 AM", label: "Worship" }, { day: "Wednesday", times: "7:00 PM", label: "Midweek" }]);
         setWebsiteUrl(data.websiteUrl ?? "");
         setShowEventsPublic(data.showEventsPublic !== false);
+        setGivingExternalUrl(data.givingExternalUrl ?? "");
+        setTextToGivePhone(data.textToGivePhone ?? "");
       } catch {
         if (!cancelled) setMessage({ type: "error", text: "Failed to load profile" });
       } finally {
@@ -62,6 +66,8 @@ export default function ChurchProfileSettingsPage() {
           serviceTimes,
           websiteUrl: websiteUrl.trim(),
           showEventsPublic,
+          givingExternalUrl: givingExternalUrl.trim(),
+          textToGivePhone: textToGivePhone.trim(),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -146,6 +152,19 @@ export default function ChurchProfileSettingsPage() {
         <div className="flex items-center gap-2">
           <input type="checkbox" id="show-events" checked={showEventsPublic} onChange={(e) => setShowEventsPublic(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600" />
           <label htmlFor="show-events" className="text-sm text-gray-700">Show events on public site</label>
+        </div>
+        <div className="border-t border-gray-200 pt-6 space-y-4">
+          <h3 className="text-sm font-semibold text-gray-900">Giving</h3>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">External giving URL</label>
+            <input type="url" value={givingExternalUrl} onChange={(e) => setGivingExternalUrl(e.target.value)} className="input" placeholder="https://..." />
+            <p className="mt-1 text-xs text-gray-500">Optional. Shown on the give page if set (e.g. Pushpay, Tithely).</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Text-to-give number</label>
+            <input type="text" value={textToGivePhone} onChange={(e) => setTextToGivePhone(e.target.value)} className="input" placeholder="(555) 100-0000" />
+            <p className="mt-1 text-xs text-gray-500">Optional. Displayed as “Text GIVE to …” on the give page.</p>
+          </div>
         </div>
         <div className="flex gap-3">
           <button type="submit" disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save changes"}</button>
