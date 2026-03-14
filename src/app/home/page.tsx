@@ -5,14 +5,13 @@ import {
   Clock,
   Heart,
   Users,
-  Play,
   ArrowRight,
   Mail,
   Phone,
   Sparkles,
 } from "lucide-react";
-import { sermons } from "@/lib/data";
 import PublicEventsBlock from "@/components/public-events-block";
+import LatestSermonBlock from "@/components/latest-sermon-block";
 import PublicHeader from "@/components/public-header";
 import { SiteFooterCredit } from "@/components/site-footer";
 
@@ -26,8 +25,6 @@ const PHONE = "(555) 100-0000";
 const EMAIL = "hello@trinityhouse.org";
 
 export default function HomePage() {
-  const latestSermon = sermons[0];
-
   return (
     <div className="min-h-screen bg-gray-50">
       <PublicHeader />
@@ -202,38 +199,7 @@ export default function HomePage() {
               <p className="mt-2 text-lg text-gray-600">
                 Latest teaching and full sermon archive.
               </p>
-              <div className="mt-8 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 shadow-xl">
-                <div className="relative aspect-video flex items-center justify-center bg-brand-900/50">
-                  <button
-                    type="button"
-                    className="flex h-20 w-20 items-center justify-center rounded-full bg-white/95 text-brand-600 shadow-lg transition-transform hover:scale-105"
-                  >
-                    <Play className="h-10 w-10 ml-1" fill="currentColor" />
-                  </button>
-                </div>
-                <div className="p-6">
-                  <span className="badge badge-purple">{latestSermon.series}</span>
-                  <h3 className="mt-3 text-xl font-bold text-white">
-                    {latestSermon.title}
-                  </h3>
-                  <p className="mt-1 text-brand-200">
-                    {latestSermon.speaker} · {latestSermon.date}
-                  </p>
-                  <p className="mt-2 text-sm text-brand-100">
-                    {latestSermon.description}
-                  </p>
-                  <div className="mt-4 flex items-center gap-4 text-sm text-brand-200">
-                    <span>{latestSermon.duration}</span>
-                    <span>{latestSermon.views} views</span>
-                  </div>
-                </div>
-              </div>
-              <Link
-                href="/watch"
-                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-700"
-              >
-                Browse sermon archive <ArrowRight className="h-4 w-4" />
-              </Link>
+              <LatestSermonBlock />
             </div>
             <div className="flex w-full flex-col gap-4 lg:w-80">
               <h3 className="text-lg font-semibold text-gray-900">Quick Links</h3>

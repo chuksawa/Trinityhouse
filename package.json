@@ -8,7 +8,6 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "tsx scripts/run-migration.ts",
-    "db:seed": "tsx scripts/seed.ts",
     "db:seed-auth": "tsx scripts/seed-auth.ts"
   },
   "dependencies": {
@@ -34,6 +33,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
+    "dotenv": "^17.3.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.18",
     "postcss": "^8.4.49",

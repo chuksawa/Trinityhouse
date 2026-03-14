@@ -68,9 +68,9 @@ export default function LoginPage() {
           </p>
           <div className="flex gap-4 pt-2">
             {[
-              { n: "324", l: "Members" },
-              { n: "6", l: "Groups" },
-              { n: "342", l: "Avg Attendance" },
+              { n: "—", l: "Members" },
+              { n: "—", l: "Groups" },
+              { n: "—", l: "Avg Attendance" },
             ].map((s) => (
               <div key={s.l} className="rounded-xl bg-white/5 px-5 py-3 backdrop-blur">
                 <p className="text-2xl font-bold text-white">{s.n}</p>
@@ -126,7 +126,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="david@trinityhouse.org"
+                placeholder="you@example.com"
                 className="input"
                 required
                 autoComplete="email"
