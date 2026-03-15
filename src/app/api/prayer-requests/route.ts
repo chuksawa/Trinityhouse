@@ -23,6 +23,16 @@ async function ensureColumns() {
   try {
     await query("ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS person_name TEXT");
   } catch { /* already exists */ }
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS prayer_prayed (
+        prayer_request_id TEXT NOT NULL REFERENCES prayer_requests(id) ON DELETE CASCADE,
+        user_email TEXT NOT NULL,
+        prayed_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (prayer_request_id, user_email)
+      )
+    `);
+  } catch { /* already exists */ }
   tableReady = true;
 }
 
@@ -36,21 +46,25 @@ type Row = {
   prayer_count: number;
   first_name: string | null;
   last_name: string | null;
+  user_has_prayed: boolean;
 };
 
 /** GET: List prayer requests. */
 export async function GET() {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const userEmail = (auth.email ?? "").toString().trim().toLowerCase();
   try {
     await ensureColumns();
     const { rows } = await query<Row>(
       `SELECT pr.id, pr.person_name, pr.person_id, pr.request, pr.request_date::text, pr.status, pr.prayer_count,
-              p.first_name, p.last_name
+              p.first_name, p.last_name,
+              EXISTS (SELECT 1 FROM prayer_prayed pp WHERE pp.prayer_request_id = pr.id AND pp.user_email = $1) AS user_has_prayed
        FROM prayer_requests pr
        LEFT JOIN people p ON p.id = pr.person_id
        ORDER BY pr.created_at DESC
-       LIMIT 200`
+       LIMIT 200`,
+      [userEmail]
     );
     const prayerRequests = rows.map((r) => ({
       id: r.id,
@@ -59,6 +73,7 @@ export async function GET() {
       requestDate: r.request_date,
       status: r.status,
       prayerCount: r.prayer_count,
+      userHasPrayed: !!r.user_has_prayed,
     }));
     return NextResponse.json({ prayerRequests });
   } catch (e) {

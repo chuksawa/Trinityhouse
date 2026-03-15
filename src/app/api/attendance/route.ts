@@ -13,16 +13,19 @@ async function ensureTable() {
     CREATE TABLE IF NOT EXISTS attendance_records (
       id            SERIAL PRIMARY KEY,
       event_id      TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      instance_date DATE,
       person_id     TEXT REFERENCES people(id) ON DELETE SET NULL,
       guest_name    TEXT,
-      checked_in_at TIMESTAMPTZ DEFAULT NOW(),
-      UNIQUE (event_id, person_id)
+      checked_in_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
   try {
+    await query("ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS instance_date DATE");
+  } catch { /* already exists */ }
+  try {
     await query("CREATE INDEX IF NOT EXISTS idx_attendance_event ON attendance_records(event_id)");
     await query("CREATE INDEX IF NOT EXISTS idx_attendance_person ON attendance_records(person_id)");
-    await query("CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_event_guest ON attendance_records(event_id, guest_name) WHERE guest_name IS NOT NULL");
+    await query("CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_event_guest_inst ON attendance_records(event_id, COALESCE(instance_date, '1970-01-01'), guest_name) WHERE guest_name IS NOT NULL");
   } catch {
     // indexes may already exist
   }
@@ -44,18 +47,25 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const eventId = url.searchParams.get("eventId");
+  const instanceDate = url.searchParams.get("instanceDate");
 
   try {
     await ensureTable();
 
     if (eventId) {
+      const params: string[] = [eventId];
+      let dateClause = "";
+      if (instanceDate) {
+        dateClause = " AND a.instance_date = $2::date";
+        params.push(instanceDate);
+      }
       const { rows } = await query<{ id: number; person_id: string | null; guest_name: string | null; first_name: string | null; last_name: string | null; checked_in_at: string }>(
         `SELECT a.id, a.person_id, a.guest_name, p.first_name, p.last_name, a.checked_in_at::text
          FROM attendance_records a
          LEFT JOIN people p ON p.id = a.person_id
-         WHERE a.event_id = $1
+         WHERE a.event_id = $1${dateClause}
          ORDER BY a.checked_in_at DESC`,
-        [eventId]
+        params
       );
       const attendees = rows.map((r) => ({
         id: r.id,
@@ -88,6 +98,47 @@ export async function GET(req: Request) {
   }
 }
 
+/** DELETE: Undo check-in — the logged-in user removes their check-in for an event instance. */
+export async function DELETE(req: Request) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
+  try {
+    await ensureTable();
+
+    const url = new URL(req.url);
+    const eventId = url.searchParams.get("eventId") ?? "";
+    const instanceDate = url.searchParams.get("instanceDate") || null;
+
+    if (!eventId) {
+      return NextResponse.json({ error: "Event ID is required." }, { status: 400 });
+    }
+
+    const email = auth.email as string;
+
+    const { rowCount } = await query(
+      instanceDate
+        ? "DELETE FROM attendance_records WHERE event_id = $1 AND guest_name = $2 AND instance_date = $3::date"
+        : "DELETE FROM attendance_records WHERE event_id = $1 AND guest_name = $2 AND instance_date IS NULL",
+      instanceDate ? [eventId, email, instanceDate] : [eventId, email]
+    );
+
+    if (!rowCount || rowCount === 0) {
+      return NextResponse.json({ error: "Check-in not found." }, { status: 404 });
+    }
+
+    await query(
+      "UPDATE events SET checked_in = GREATEST(0, (SELECT COUNT(*) FROM attendance_records WHERE event_id = $1)) WHERE id = $1",
+      [eventId]
+    );
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("[attendance DELETE]", e);
+    return NextResponse.json({ error: "Failed to undo check-in." }, { status: 500 });
+  }
+}
+
 /** POST: Self-check-in — the logged-in user checks themselves into an event. */
 export async function POST(req: Request) {
   const auth = await requireAuth();
@@ -98,6 +149,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const eventId = (body.eventId ?? "").toString().trim();
+    const instanceDate = (body.instanceDate ?? "").toString().trim() || null;
 
     if (!eventId) {
       return NextResponse.json({ error: "Event ID is required." }, { status: 400 });
@@ -106,17 +158,19 @@ export async function POST(req: Request) {
     const email = auth.email as string;
 
     const { rows: existing } = await query<{ id: number }>(
-      "SELECT id FROM attendance_records WHERE event_id = $1 AND guest_name = $2 LIMIT 1",
-      [eventId, email]
+      instanceDate
+        ? "SELECT id FROM attendance_records WHERE event_id = $1 AND guest_name = $2 AND instance_date = $3::date LIMIT 1"
+        : "SELECT id FROM attendance_records WHERE event_id = $1 AND guest_name = $2 AND instance_date IS NULL LIMIT 1",
+      instanceDate ? [eventId, email, instanceDate] : [eventId, email]
     );
     if (existing.length > 0) {
       return NextResponse.json({ error: "You are already checked in." }, { status: 409 });
     }
 
     await query(
-      `INSERT INTO attendance_records (event_id, person_id, guest_name)
-       VALUES ($1, NULL, $2)`,
-      [eventId, email]
+      `INSERT INTO attendance_records (event_id, instance_date, person_id, guest_name)
+       VALUES ($1, $2::date, NULL, $3)`,
+      [eventId, instanceDate, email]
     );
 
     await query(

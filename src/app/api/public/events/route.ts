@@ -164,6 +164,26 @@ export async function GET() {
       }
     }
     instances.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+    // Fetch per-instance registration counts
+    try {
+      const { rows: regRows } = await query<{ event_id: string; instance_date: string | null; cnt: string }>(
+        `SELECT event_id, instance_date::text, COUNT(*)::text AS cnt
+         FROM event_registrations
+         GROUP BY event_id, instance_date`
+      );
+      const regMap = new Map<string, number>();
+      for (const r of regRows) {
+        const key = r.instance_date ? `${r.event_id}|${r.instance_date}` : `${r.event_id}|`;
+        regMap.set(key, parseInt(r.cnt, 10));
+      }
+      for (const inst of instances) {
+        const baseId = inst.id.replace(/-\d{4}-\d{2}-\d{2}$/, "");
+        const count = regMap.get(`${baseId}|${inst.date}`) ?? regMap.get(`${inst.id}|`) ?? 0;
+        inst.registered = count;
+      }
+    } catch { /* event_registrations may not exist yet */ }
+
     return NextResponse.json({ events: instances });
   } catch (e) {
     console.error("[public/events GET]", e);

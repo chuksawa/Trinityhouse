@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
-import { Calendar, Clock, MapPin, ArrowLeft, UserPlus, CheckCircle2, X } from "lucide-react";
+import { Calendar, Clock, MapPin, ArrowLeft, UserPlus, CheckCircle2, X, UserMinus } from "lucide-react";
 import PublicHeader from "@/components/public-header";
 import { SiteFooterMinimal } from "@/components/site-footer";
 import { formatDate, formatDateShort } from "@/lib/utils";
@@ -21,6 +21,23 @@ type PublicEvent = {
   registered: number;
   description?: string;
 };
+
+function regKey(eventId: string, date: string): string {
+  const base = eventId.replace(/-\d{4}-\d{2}-\d{2}$/, "");
+  return `th_reg_${base}_${date}`;
+}
+
+function saveReg(eventId: string, date: string, email: string) {
+  try { localStorage.setItem(regKey(eventId, date), email); } catch { /* noop */ }
+}
+
+function clearReg(eventId: string, date: string) {
+  try { localStorage.removeItem(regKey(eventId, date)); } catch { /* noop */ }
+}
+
+function getSavedRegEmail(eventId: string, date: string): string | null {
+  try { return localStorage.getItem(regKey(eventId, date)); } catch { return null; }
+}
 
 function isWeekend(dateStr: string): boolean {
   const d = new Date(dateStr);
@@ -47,20 +64,23 @@ function RegistrationModal({
   event,
   onClose,
   onSuccess,
+  alreadyRegistered,
 }: {
   event: PublicEvent;
   onClose: () => void;
   onSuccess: () => void;
+  alreadyRegistered: boolean;
 }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => getSavedRegEmail(event.id, event.date) ?? "");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
 
-  const baseEventId = event.id.includes("-202") ? event.id.replace(/-\d{4}-\d{2}-\d{2}$/, "") : event.id;
+  const baseEventId = event.id.replace(/-\d{4}-\d{2}-\d{2}$/, "");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +92,7 @@ function RegistrationModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           eventId: baseEventId,
+          instanceDate: event.date,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           email: email.trim(),
@@ -83,7 +104,41 @@ function RegistrationModal({
         setError(data.error || "Registration failed.");
         return;
       }
+      saveReg(event.id, event.date, email.trim().toLowerCase());
       setDone(true);
+      onSuccess();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUnregister = async () => {
+    const savedEmail = getSavedRegEmail(event.id, event.date);
+    if (!savedEmail) {
+      setError("Enter the email you registered with to unregister.");
+      return;
+    }
+    setError("");
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${BASE_PATH}/api/public/events/register`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: baseEventId,
+          instanceDate: event.date,
+          email: savedEmail,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to unregister.");
+        return;
+      }
+      clearReg(event.id, event.date);
+      setCancelled(true);
       onSuccess();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -105,7 +160,22 @@ function RegistrationModal({
           <X className="h-5 w-5" />
         </button>
 
-        {done ? (
+        {cancelled ? (
+          <div className="flex flex-col items-center py-6 text-center">
+            <UserMinus className="mb-4 h-12 w-12 text-gray-400" />
+            <h3 className="text-lg font-semibold text-gray-900">Registration cancelled</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Your registration for <span className="font-medium">{event.title}</span> on{" "}
+              {formatDate(event.date)} has been removed.
+            </p>
+            <button
+              onClick={onClose}
+              className="mt-6 rounded-lg bg-gray-100 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+            >
+              Done
+            </button>
+          </div>
+        ) : done ? (
           <div className="flex flex-col items-center py-6 text-center">
             <CheckCircle2 className="mb-4 h-12 w-12 text-green-500" />
             <h3 className="text-lg font-semibold text-gray-900">You&apos;re registered!</h3>
@@ -118,6 +188,23 @@ function RegistrationModal({
               className="mt-6 rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
             >
               Done
+            </button>
+          </div>
+        ) : alreadyRegistered ? (
+          <div className="flex flex-col items-center py-6 text-center">
+            <CheckCircle2 className="mb-4 h-12 w-12 text-green-500" />
+            <h3 className="text-lg font-semibold text-gray-900">You&apos;re registered</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              <span className="font-medium">{event.title}</span> &middot; {formatDate(event.date)} at {event.time}
+            </p>
+            {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+            <button
+              onClick={handleUnregister}
+              disabled={submitting}
+              className="mt-6 inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-6 py-2.5 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+            >
+              <UserMinus className="h-4 w-4" />
+              {submitting ? "Cancelling…" : "Cancel registration"}
             </button>
           </div>
         ) : (
@@ -190,7 +277,7 @@ function RegistrationModal({
   );
 }
 
-function EventCard({ event, onRegister }: { event: PublicEvent; onRegister: (e: PublicEvent) => void }) {
+function EventCard({ event, onRegister, isRegistered }: { event: PublicEvent; onRegister: (e: PublicEvent) => void; isRegistered: boolean }) {
   const isFull = event.capacity > 0 && event.registered >= event.capacity;
   const spotsText =
     event.capacity > 0
@@ -231,14 +318,24 @@ function EventCard({ event, onRegister }: { event: PublicEvent; onRegister: (e: 
         <p className="mt-3 text-sm text-gray-600 line-clamp-3">{event.description}</p>
       )}
       <div className="mt-auto pt-4">
-        <button
-          onClick={() => onRegister(event)}
-          disabled={isFull}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
-        >
-          <UserPlus className="h-4 w-4" />
-          {isFull ? "Event Full" : "Register"}
-        </button>
+        {isRegistered ? (
+          <button
+            onClick={() => onRegister(event)}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-medium text-green-700 hover:bg-green-100"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Registered
+          </button>
+        ) : (
+          <button
+            onClick={() => onRegister(event)}
+            disabled={isFull}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+          >
+            <UserPlus className="h-4 w-4" />
+            {isFull ? "Event Full" : "Register"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -248,6 +345,7 @@ export default function PublicEventsPage() {
   const [events, setEvents] = useState<PublicEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [registerEvent, setRegisterEvent] = useState<PublicEvent | null>(null);
+  const [regVersion, setRegVersion] = useState(0);
 
   const loadEvents = useCallback(() => {
     fetch(`${BASE_PATH}/api/public/events/`, { credentials: "include" })
@@ -261,6 +359,16 @@ export default function PublicEventsPage() {
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
+  const isEventRegistered = useCallback((e: PublicEvent) => {
+    void regVersion;
+    return !!getSavedRegEmail(e.id, e.date);
+  }, [regVersion]);
+
+  const handleRegSuccess = useCallback(() => {
+    loadEvents();
+    setRegVersion((v) => v + 1);
+  }, [loadEvents]);
+
   const weekendEvents = events.filter((e) => isWeekend(e.date));
   const otherUpcoming = events.filter((e) => !isWeekend(e.date));
 
@@ -272,7 +380,8 @@ export default function PublicEventsPage() {
         <RegistrationModal
           event={registerEvent}
           onClose={() => setRegisterEvent(null)}
-          onSuccess={loadEvents}
+          onSuccess={handleRegSuccess}
+          alreadyRegistered={isEventRegistered(registerEvent)}
         />
       )}
 
@@ -305,7 +414,7 @@ export default function PublicEventsPage() {
                 <h2 className="mb-6 text-xl font-semibold text-gray-900">This weekend</h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {weekendEvents.map((event) => (
-                    <EventCard key={event.id} event={event} onRegister={setRegisterEvent} />
+                    <EventCard key={event.id} event={event} onRegister={setRegisterEvent} isRegistered={isEventRegistered(event)} />
                   ))}
                 </div>
               </section>
@@ -317,7 +426,7 @@ export default function PublicEventsPage() {
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {(weekendEvents.length > 0 ? otherUpcoming : events).map((event) => (
-                  <EventCard key={event.id} event={event} onRegister={setRegisterEvent} />
+                  <EventCard key={event.id} event={event} onRegister={setRegisterEvent} isRegistered={isEventRegistered(event)} />
                 ))}
               </div>
             </section>

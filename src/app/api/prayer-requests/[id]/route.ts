@@ -25,7 +25,39 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       await query("UPDATE prayer_requests SET status = $1 WHERE id = $2", [body.status, id]);
     }
     if (body.incrementPrayer) {
-      await query("UPDATE prayer_requests SET prayer_count = prayer_count + 1 WHERE id = $1", [id]);
+      const userEmail = (auth.email ?? "").toString().trim().toLowerCase();
+      let inserted = false;
+      try {
+        const insertResult = await query(
+          `INSERT INTO prayer_prayed (prayer_request_id, user_email) VALUES ($1, $2)
+           ON CONFLICT (prayer_request_id, user_email) DO NOTHING`,
+          [id, userEmail]
+        );
+        inserted = (insertResult.rowCount ?? 0) > 0;
+      } catch {
+        try {
+          await query(`
+            CREATE TABLE IF NOT EXISTS prayer_prayed (
+              prayer_request_id TEXT NOT NULL REFERENCES prayer_requests(id) ON DELETE CASCADE,
+              user_email TEXT NOT NULL,
+              prayed_at TIMESTAMPTZ DEFAULT NOW(),
+              PRIMARY KEY (prayer_request_id, user_email)
+            )
+          `);
+          const retry = await query(
+            `INSERT INTO prayer_prayed (prayer_request_id, user_email) VALUES ($1, $2)
+             ON CONFLICT (prayer_request_id, user_email) DO NOTHING`,
+            [id, userEmail]
+          );
+          inserted = (retry.rowCount ?? 0) > 0;
+        } catch (e2) {
+          console.error("[prayer-requests PATCH prayer_prayed]", e2);
+        }
+      }
+      if (inserted) {
+        await query("UPDATE prayer_requests SET prayer_count = prayer_count + 1 WHERE id = $1", [id]);
+      }
+      return NextResponse.json({ ok: true, incremented: inserted, alreadyPrayed: !inserted });
     }
 
     return NextResponse.json({ ok: true });

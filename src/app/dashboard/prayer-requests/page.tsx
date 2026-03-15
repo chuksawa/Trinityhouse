@@ -14,6 +14,7 @@ type PrayerRequest = {
   requestDate: string;
   status: string;
   prayerCount: number;
+  userHasPrayed?: boolean;
 };
 
 const STATUS_TABS = [
@@ -86,14 +87,19 @@ export default function PrayerRequestsPage() {
   }
 
   async function handlePray(id: string) {
-    await fetch(`${BASE_PATH}/api/prayer-requests/${id}`, {
+    const res = await fetch(`${BASE_PATH}/api/prayer-requests/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ incrementPrayer: true }),
-    }).catch(() => {});
+    }).catch(() => null);
+    if (!res?.ok) return;
+    const data = await res.json().catch(() => ({}));
+    if (data.alreadyPrayed) return;
     setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, prayerCount: r.prayerCount + 1 } : r))
+      prev.map((r) =>
+        r.id === id ? { ...r, prayerCount: r.prayerCount + 1, userHasPrayed: true } : r
+      )
     );
   }
 
@@ -184,10 +190,16 @@ export default function PrayerRequestsPage() {
                     <button
                       type="button"
                       onClick={() => handlePray(pr.id)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                      disabled={pr.userHasPrayed}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium",
+                        pr.userHasPrayed
+                          ? "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400"
+                          : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                      )}
                     >
-                      <Heart className="h-3.5 w-3.5 text-rose-500" />
-                      Pray ({pr.prayerCount})
+                      <Heart className={cn("h-3.5 w-3.5", pr.userHasPrayed ? "text-gray-400" : "text-rose-500")} />
+                      {pr.userHasPrayed ? "Prayed" : "Pray"} ({pr.prayerCount})
                     </button>
                     {pr.status === "active" && (
                       <button

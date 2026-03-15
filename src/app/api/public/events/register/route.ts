@@ -11,15 +11,49 @@ async function ensureTable() {
     CREATE TABLE IF NOT EXISTS event_registrations (
       id            SERIAL PRIMARY KEY,
       event_id      TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      instance_date DATE,
       first_name    TEXT NOT NULL,
       last_name     TEXT NOT NULL,
       email         TEXT NOT NULL,
       phone         TEXT,
-      registered_at TIMESTAMPTZ DEFAULT NOW(),
-      UNIQUE (event_id, email)
+      registered_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  try { await query("ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS instance_date DATE"); } catch { /* already exists */ }
+  try { await query("CREATE UNIQUE INDEX IF NOT EXISTS idx_event_reg_instance ON event_registrations(event_id, COALESCE(instance_date, '1970-01-01'), email)"); } catch { /* already exists */ }
   tableEnsured = true;
+}
+
+/** DELETE: Unregister from an event (public, no auth — requires email match). */
+export async function DELETE(req: Request) {
+  try {
+    await ensureTable();
+
+    const body = await req.json();
+    const eventId = (body.eventId ?? "").toString().trim();
+    const instanceDate = (body.instanceDate ?? "").toString().trim() || null;
+    const email = (body.email ?? "").toString().trim().toLowerCase();
+
+    if (!eventId || !email) {
+      return NextResponse.json({ error: "Event ID and email are required." }, { status: 400 });
+    }
+
+    const { rowCount } = await query(
+      instanceDate
+        ? "DELETE FROM event_registrations WHERE event_id = $1 AND email = $2 AND instance_date = $3::date"
+        : "DELETE FROM event_registrations WHERE event_id = $1 AND email = $2 AND instance_date IS NULL",
+      instanceDate ? [eventId, email, instanceDate] : [eventId, email]
+    );
+
+    if (!rowCount || rowCount === 0) {
+      return NextResponse.json({ error: "Registration not found." }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true, message: "Registration cancelled." });
+  } catch (e) {
+    console.error("[public/events/register DELETE]", e);
+    return NextResponse.json({ error: "Failed to unregister. Please try again." }, { status: 500 });
+  }
 }
 
 /** POST: Register for an event (public, no auth). */
@@ -29,6 +63,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const eventId = (body.eventId ?? "").toString().trim();
+    const instanceDate = (body.instanceDate ?? "").toString().trim() || null;
     const firstName = (body.firstName ?? "").toString().trim();
     const lastName = (body.lastName ?? "").toString().trim();
     const email = (body.email ?? "").toString().trim().toLowerCase();
@@ -50,8 +85,10 @@ export async function POST(req: Request) {
 
     if (event.capacity > 0) {
       const { rows: countRows } = await query<{ cnt: string }>(
-        "SELECT COUNT(*)::text AS cnt FROM event_registrations WHERE event_id = $1",
-        [eventId]
+        instanceDate
+          ? "SELECT COUNT(*)::text AS cnt FROM event_registrations WHERE event_id = $1 AND instance_date = $2::date"
+          : "SELECT COUNT(*)::text AS cnt FROM event_registrations WHERE event_id = $1 AND instance_date IS NULL",
+        instanceDate ? [eventId, instanceDate] : [eventId]
       );
       const currentCount = parseInt(countRows[0]?.cnt ?? "0", 10);
       if (currentCount >= event.capacity) {
@@ -61,9 +98,9 @@ export async function POST(req: Request) {
 
     try {
       await query(
-        `INSERT INTO event_registrations (event_id, first_name, last_name, email, phone)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [eventId, firstName, lastName, email, phone]
+        `INSERT INTO event_registrations (event_id, instance_date, first_name, last_name, email, phone)
+         VALUES ($1, $2::date, $3, $4, $5, $6)`,
+        [eventId, instanceDate, firstName, lastName, email, phone]
       );
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -72,11 +109,6 @@ export async function POST(req: Request) {
       }
       throw e;
     }
-
-    await query(
-      "UPDATE events SET registered = (SELECT COUNT(*) FROM event_registrations WHERE event_id = $1) WHERE id = $1",
-      [eventId]
-    );
 
     return NextResponse.json({ ok: true, message: "Registration successful!" });
   } catch (e) {

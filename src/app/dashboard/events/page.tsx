@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, Calendar, Clock, MapPin, Users, UserCheck, Globe, Trash2, X } from "lucide-react";
+import { Plus, Calendar, Clock, MapPin, Users, UserCheck, Globe, Trash2, X, Undo2 } from "lucide-react";
 import Modal from "@/components/modal";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -103,12 +103,17 @@ function CheckInModal({
   const [checkedIn, setCheckedIn] = useState(false);
   const [err, setErr] = useState("");
 
+  const baseEventId = event.id.replace(/-\d{4}-\d{2}-\d{2}$/, "");
+  const instanceDate = event.date;
+
   const loadAttendees = useCallback(() => {
-    fetch(`${BASE_PATH}/api/attendance?eventId=${encodeURIComponent(event.id)}`, { credentials: "include" })
+    const params = new URLSearchParams({ eventId: baseEventId });
+    if (instanceDate) params.set("instanceDate", instanceDate);
+    fetch(`${BASE_PATH}/api/attendance?${params}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : { attendees: [] }))
       .then((d) => { if (Array.isArray(d.attendees)) setAttendees(d.attendees); })
       .catch(() => {});
-  }, [event.id]);
+  }, [baseEventId, instanceDate]);
 
   useEffect(() => { loadAttendees(); }, [loadAttendees]);
 
@@ -120,7 +125,7 @@ function CheckInModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ eventId: event.id }),
+        body: JSON.stringify({ eventId: baseEventId, instanceDate }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -135,6 +140,28 @@ function CheckInModal({
     finally { setBusy(false); }
   }
 
+  async function handleUndoCheckIn() {
+    setErr("");
+    setBusy(true);
+    try {
+      const params = new URLSearchParams({ eventId: baseEventId });
+      if (instanceDate) params.set("instanceDate", instanceDate);
+      const res = await fetch(`${BASE_PATH}/api/attendance?${params}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErr(data.error || "Failed to undo check-in");
+        return;
+      }
+      setCheckedIn(false);
+      loadAttendees();
+      onCheckedIn();
+    } catch { setErr("Failed to undo check-in"); }
+    finally { setBusy(false); }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
       <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -146,9 +173,20 @@ function CheckInModal({
         <p className="mb-5 text-sm text-gray-500">{formatDate(event.date)} · {event.time}</p>
 
         {checkedIn ? (
-          <div className="flex flex-col items-center rounded-lg bg-green-50 py-5 text-center">
-            <UserCheck className="mb-2 h-8 w-8 text-green-500" />
-            <p className="font-medium text-green-700">You&apos;re checked in!</p>
+          <div className="space-y-3">
+            <div className="flex flex-col items-center rounded-lg bg-green-50 py-5 text-center">
+              <UserCheck className="mb-2 h-8 w-8 text-green-500" />
+              <p className="font-medium text-green-700">You&apos;re checked in!</p>
+            </div>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleUndoCheckIn}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 py-2.5 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+            >
+              <Undo2 className="h-4 w-4" />
+              {busy ? "Undoing…" : "Undo check-in"}
+            </button>
           </div>
         ) : (
           <button
