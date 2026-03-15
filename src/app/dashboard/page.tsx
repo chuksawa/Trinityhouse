@@ -221,7 +221,7 @@ export default function DashboardPage() {
                       {person.firstName} {person.lastName}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Last seen {timeAgo(person.lastAttendance)}
+                      {person.lastAttendance ? `Last seen ${timeAgo(person.lastAttendance)}` : "No attendance yet"}
                     </p>
                   </div>
                   <span
