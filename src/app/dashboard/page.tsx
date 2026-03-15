@@ -3,18 +3,8 @@
 import { useState, useEffect, useMemo } from "react";
 import StatCard from "@/components/stat-card";
 import { cn, formatCurrency, formatDate, timeAgo, getInitials } from "@/lib/utils";
+import { Users, TrendingUp, Heart, HandHeart, Calendar, HeartHandshake, Clock } from "lucide-react";
 import {
-  dashboardStats,
-  attendanceHistory,
-  people,
-  events,
-  prayerRequests,
-  getPersonById,
-} from "@/lib/data";
-import { Users, TrendingUp, Heart, HandHeart, Calendar, HeartHandshake } from "lucide-react";
-import {
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   XAxis,
@@ -26,19 +16,41 @@ import {
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
+type DashboardPerson = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  lastAttendance: string | null;
+  avatarColor: string;
+};
+
+type DashboardEvent = {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  capacity: number;
+  registered: number;
+};
+
 export default function DashboardPage() {
   const [gifts, setGifts] = useState<{ amount: number; date: string }[]>([]);
+  const [people, setPeople] = useState<DashboardPerson[]>([]);
+  const [events, setEvents] = useState<DashboardEvent[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${BASE_PATH}/api/giving/gifts`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { gifts: [] }))
-      .then((data) => {
-        if (!cancelled && Array.isArray(data.gifts)) {
-          setGifts(data.gifts.map((g: { amount: number; date: string }) => ({ amount: g.amount, date: g.date })));
-        }
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch(`${BASE_PATH}/api/giving/gifts`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { gifts: [] })),
+      fetch(`${BASE_PATH}/api/people`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { people: [] })),
+      fetch(`${BASE_PATH}/api/events`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { events: [] })),
+    ]).then(([giftsData, peopleData, eventsData]) => {
+      if (cancelled) return;
+      if (Array.isArray(giftsData.gifts)) setGifts(giftsData.gifts.map((g: { amount: number; date: string }) => ({ amount: g.amount, date: g.date })));
+      if (Array.isArray(peopleData.people)) setPeople(peopleData.people);
+      if (Array.isArray(eventsData.events)) setEvents(eventsData.events);
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -61,12 +73,22 @@ export default function DashboardPage() {
       .map(([month, amount]) => ({ month, amount }));
   }, [gifts]);
 
-  const atRiskPeople = people.filter((p) => p.status === "at_risk" || p.status === "inactive");
-  const upcomingEvents = [...events]
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 4);
-  const activePrayers = prayerRequests.filter((pr) => pr.status === "active");
-  const funnel = dashboardStats.newcomersFunnel;
+  const totalMembers = people.length;
+  const volunteersServing = people.filter((p) => p.status === "active").length;
+
+  const atRiskPeople = useMemo(
+    () => people.filter((p) => p.status === "at_risk" || p.status === "inactive"),
+    [people]
+  );
+
+  const todayStr = now.toISOString().slice(0, 10);
+  const upcomingEvents = useMemo(
+    () => [...events]
+      .filter((e) => e.date >= todayStr)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 4),
+    [events, todayStr]
+  );
 
   return (
     <div className="space-y-6">
@@ -90,16 +112,16 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Total Members"
-          value={dashboardStats.totalMembers}
+          value={totalMembers}
           change={undefined}
           icon={Users}
           iconColor="text-brand-600 bg-brand-50"
         />
         <StatCard
-          label="Average Attendance"
-          value={dashboardStats.avgAttendance}
-          change={dashboardStats.attendanceChange}
-          icon={TrendingUp}
+          label="Upcoming Events"
+          value={upcomingEvents.length}
+          change={undefined}
+          icon={Calendar}
           iconColor="text-emerald-600 bg-emerald-50"
         />
         <StatCard
@@ -110,9 +132,9 @@ export default function DashboardPage() {
           iconColor="text-rose-600 bg-rose-50"
         />
         <StatCard
-          label="Volunteers Serving"
-          value={dashboardStats.volunteersServing}
-          change={dashboardStats.volunteerChange}
+          label="Active Members"
+          value={volunteersServing}
+          change={undefined}
           icon={HandHeart}
           iconColor="text-amber-600 bg-amber-50"
         />
@@ -124,35 +146,10 @@ export default function DashboardPage() {
           <h3 className="mb-4 text-base font-semibold text-gray-900">
             Attendance Trend
           </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={attendanceHistory}>
-                <defs>
-                  <linearGradient id="attendanceGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="week" tick={{ fontSize: 12 }} stroke="#9ca3af" />
-                <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "8px",
-                    border: "1px solid #e5e7eb",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="attendance"
-                  stroke="#4f46e5"
-                  strokeWidth={2}
-                  fill="url(#attendanceGradient)"
-                  name="Attendance"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+            <Clock className="mb-3 h-10 w-10" />
+            <p className="text-sm font-medium">Coming soon</p>
+            <p className="mt-1 text-xs">Attendance tracking will appear here</p>
           </div>
         </div>
 
@@ -191,30 +188,10 @@ export default function DashboardPage() {
           <h3 className="mb-4 text-base font-semibold text-gray-900">
             Newcomer Funnel
           </h3>
-          <div className="space-y-4">
-            {[
-              { label: "Visited", value: funnel.visited, color: "bg-gray-300" },
-              { label: "Connected", value: funnel.connected, color: "bg-brand-300" },
-              { label: "Joined", value: funnel.joined, color: "bg-brand-500" },
-              { label: "Serving", value: funnel.serving, color: "bg-brand-600" },
-            ].map((step, idx) => {
-              const max = funnel.visited || 1;
-              const pct = (step.value / max) * 100;
-              return (
-                <div key={step.label} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-gray-700">{step.label}</span>
-                    <span className="text-gray-500">{step.value}</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                    <div
-                      className={cn("h-full rounded-full transition-all", step.color)}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+          <div className="flex h-48 flex-col items-center justify-center text-gray-400">
+            <Clock className="mb-3 h-10 w-10" />
+            <p className="text-sm font-medium">Coming soon</p>
+            <p className="mt-1 text-xs">Newcomer tracking will appear here</p>
           </div>
         </div>
 
@@ -298,30 +275,11 @@ export default function DashboardPage() {
             <HeartHandshake className="h-4 w-4 text-brand-600" />
             Active Prayer Requests
           </h3>
-          {activePrayers.length === 0 ? (
-            <p className="py-4 text-sm text-gray-500">No active prayer requests.</p>
-          ) : (
-            <ul className="space-y-3">
-              {activePrayers.map((pr) => {
-                const person = getPersonById(pr.personId);
-                const name = person
-                  ? `${person.firstName} ${person.lastName}`
-                  : "Unknown";
-                return (
-                  <li
-                    key={pr.id}
-                    className="rounded-lg border border-gray-100 p-3 hover:bg-gray-50"
-                  >
-                    <p className="mb-1 font-medium text-gray-900">{name}</p>
-                    <p className="text-sm text-gray-600">{pr.request}</p>
-                    <p className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-                      <span className="badge badge-purple">{pr.prayerCount} praying</span>
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <div className="flex h-48 flex-col items-center justify-center text-gray-400">
+            <Clock className="mb-3 h-10 w-10" />
+            <p className="text-sm font-medium">Coming soon</p>
+            <p className="mt-1 text-xs">Prayer request tracking will appear here</p>
+          </div>
         </div>
       </div>
     </div>
