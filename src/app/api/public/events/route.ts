@@ -88,23 +88,39 @@ export async function GET() {
     let rows: EventRow[];
     try {
       const result = await query<EventRow>(
-        `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, description, show_public,
-                recurrence_type, recurrence_end_date::text
-         FROM events
-         WHERE date >= CURRENT_DATE AND (show_public IS NULL OR show_public = true)
-         ORDER BY date ASC, time ASC`
+        `SELECT e.id, e.title, e.type, e.date::text, e.time, e.end_time, e.location, e.capacity,
+                COALESCE(r.cnt, 0)::int AS registered,
+                e.description, e.show_public,
+                e.recurrence_type, e.recurrence_end_date::text
+         FROM events e
+         LEFT JOIN (SELECT event_id, COUNT(*) AS cnt FROM event_registrations GROUP BY event_id) r ON r.event_id = e.id
+         WHERE e.date >= CURRENT_DATE AND (e.show_public IS NULL OR e.show_public = true)
+         ORDER BY e.date ASC, e.time ASC`
       );
       rows = result.rows;
     } catch (colErr: unknown) {
       const m = colErr instanceof Error ? colErr.message : String(colErr);
-      if (m.includes("recurrence_type") || m.includes("recurrence_end_date") || m.includes("does not exist")) {
-        const result = await query<EventRow>(
-          `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, description, show_public
-           FROM events
-           WHERE date >= CURRENT_DATE AND (show_public IS NULL OR show_public = true)
-           ORDER BY date ASC, time ASC`
-        );
-        rows = result.rows;
+      if (m.includes("recurrence_type") || m.includes("recurrence_end_date") || m.includes("event_registrations") || m.includes("does not exist")) {
+        try {
+          const result = await query<EventRow>(
+            `SELECT e.id, e.title, e.type, e.date::text, e.time, e.end_time, e.location, e.capacity,
+                    COALESCE(r.cnt, 0)::int AS registered,
+                    e.description, e.show_public
+             FROM events e
+             LEFT JOIN (SELECT event_id, COUNT(*) AS cnt FROM event_registrations GROUP BY event_id) r ON r.event_id = e.id
+             WHERE e.date >= CURRENT_DATE AND (e.show_public IS NULL OR e.show_public = true)
+             ORDER BY e.date ASC, e.time ASC`
+          );
+          rows = result.rows;
+        } catch {
+          const result = await query<EventRow>(
+            `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, description, show_public
+             FROM events
+             WHERE date >= CURRENT_DATE AND (show_public IS NULL OR show_public = true)
+             ORDER BY date ASC, time ASC`
+          );
+          rows = result.rows;
+        }
       } else {
         throw colErr;
       }

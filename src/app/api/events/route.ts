@@ -38,21 +38,38 @@ export async function GET() {
     let rows: Row[];
     try {
       const result = await query<Row>(
-        `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, checked_in, description,
-                COALESCE(teams, '{}') AS teams, show_public,
-                recurrence_type, recurrence_end_date::text
-         FROM events ORDER BY date ASC, time ASC`
+        `SELECT e.id, e.title, e.type, e.date::text, e.time, e.end_time, e.location, e.capacity,
+                COALESCE(r.cnt, 0)::int AS registered,
+                e.checked_in, e.description,
+                COALESCE(e.teams, '{}') AS teams, e.show_public,
+                e.recurrence_type, e.recurrence_end_date::text
+         FROM events e
+         LEFT JOIN (SELECT event_id, COUNT(*) AS cnt FROM event_registrations GROUP BY event_id) r ON r.event_id = e.id
+         ORDER BY e.date ASC, e.time ASC`
       );
       rows = result.rows;
     } catch (colErr: unknown) {
       const m = colErr instanceof Error ? colErr.message : String(colErr);
-      if (m.includes("recurrence_type") || m.includes("recurrence_end_date") || m.includes("does not exist")) {
-        const result = await query<Row>(
-          `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, checked_in, description,
-                  COALESCE(teams, '{}') AS teams, show_public
-           FROM events ORDER BY date ASC, time ASC`
-        );
-        rows = result.rows;
+      if (m.includes("recurrence_type") || m.includes("recurrence_end_date") || m.includes("event_registrations") || m.includes("does not exist")) {
+        try {
+          const result = await query<Row>(
+            `SELECT e.id, e.title, e.type, e.date::text, e.time, e.end_time, e.location, e.capacity,
+                    COALESCE(r.cnt, 0)::int AS registered,
+                    e.checked_in, e.description,
+                    COALESCE(e.teams, '{}') AS teams, e.show_public
+             FROM events e
+             LEFT JOIN (SELECT event_id, COUNT(*) AS cnt FROM event_registrations GROUP BY event_id) r ON r.event_id = e.id
+             ORDER BY e.date ASC, e.time ASC`
+          );
+          rows = result.rows;
+        } catch {
+          const result = await query<Row>(
+            `SELECT id, title, type, date::text, time, end_time, location, capacity, registered, checked_in, description,
+                    COALESCE(teams, '{}') AS teams, show_public
+             FROM events ORDER BY date ASC, time ASC`
+          );
+          rows = result.rows;
+        }
       } else {
         throw colErr;
       }
