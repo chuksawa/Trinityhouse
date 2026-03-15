@@ -21,6 +21,7 @@ type PersonFromApi = {
   lastAttendance: string | null;
   givingTotal: number;
   avatarColor: string;
+  funnelStage: string;
 };
 
 const STATUS_TABS: { value: MemberStatus | "all"; label: string }[] = [
@@ -103,6 +104,7 @@ export default function PeoplePage() {
         phone: selectedPerson.phone,
         role: selectedPerson.role,
         status: selectedPerson.status,
+        funnelStage: selectedPerson.funnelStage ?? "visitor",
       });
       setEditing(true);
       setError("");
@@ -315,18 +317,33 @@ export default function PeoplePage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select
-                    value={editForm.status ?? ""}
-                    onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
-                    className="input"
-                  >
-                    <option value="active">Active</option>
-                    <option value="new">New</option>
-                    <option value="at_risk">At Risk</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                      value={editForm.status ?? ""}
+                      onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                      className="input"
+                    >
+                      <option value="active">Active</option>
+                      <option value="new">New</option>
+                      <option value="at_risk">At Risk</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Funnel Stage</label>
+                    <select
+                      value={(editForm as Record<string, unknown>).funnelStage as string ?? "visitor"}
+                      onChange={(e) => setEditForm((f) => ({ ...f, funnelStage: e.target.value }))}
+                      className="input"
+                    >
+                      <option value="visitor">Visitor</option>
+                      <option value="connected">Connected</option>
+                      <option value="joined">Joined</option>
+                      <option value="serving">Serving</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button type="button" onClick={saveEdit} disabled={saving} className="btn-primary inline-flex items-center gap-2">

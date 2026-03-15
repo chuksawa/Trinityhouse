@@ -5,6 +5,8 @@ import StatCard from "@/components/stat-card";
 import { cn, formatCurrency, formatDate, timeAgo, getInitials } from "@/lib/utils";
 import { Users, TrendingUp, Heart, HandHeart, Calendar, HeartHandshake, Clock } from "lucide-react";
 import {
+  AreaChart,
+  Area,
   BarChart,
   Bar,
   XAxis,
@@ -23,6 +25,7 @@ type DashboardPerson = {
   status: string;
   lastAttendance: string | null;
   avatarColor: string;
+  funnelStage: string;
 };
 
 type DashboardEvent = {
@@ -35,10 +38,20 @@ type DashboardEvent = {
   showPublic: boolean;
 };
 
+type PrayerRequest = {
+  id: string;
+  personName: string;
+  request: string;
+  status: string;
+  prayerCount: number;
+};
+
 export default function DashboardPage() {
   const [gifts, setGifts] = useState<{ amount: number; date: string }[]>([]);
   const [people, setPeople] = useState<DashboardPerson[]>([]);
   const [events, setEvents] = useState<DashboardEvent[]>([]);
+  const [prayerRequests, setPrayerRequests] = useState<PrayerRequest[]>([]);
+  const [attendanceTrend, setAttendanceTrend] = useState<{ week: string; attendance: number }[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,11 +59,15 @@ export default function DashboardPage() {
       fetch(`${BASE_PATH}/api/giving/gifts`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { gifts: [] })),
       fetch(`${BASE_PATH}/api/people`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { people: [] })),
       fetch(`${BASE_PATH}/api/events`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { events: [] })),
-    ]).then(([giftsData, peopleData, eventsData]) => {
+      fetch(`${BASE_PATH}/api/prayer-requests`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { prayerRequests: [] })),
+      fetch(`${BASE_PATH}/api/attendance`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { weeklyTrend: [] })),
+    ]).then(([giftsData, peopleData, eventsData, prayerData, attendanceData]) => {
       if (cancelled) return;
       if (Array.isArray(giftsData.gifts)) setGifts(giftsData.gifts.map((g: { amount: number; date: string }) => ({ amount: g.amount, date: g.date })));
       if (Array.isArray(peopleData.people)) setPeople(peopleData.people);
       if (Array.isArray(eventsData.events)) setEvents(eventsData.events);
+      if (Array.isArray(prayerData.prayerRequests)) setPrayerRequests(prayerData.prayerRequests);
+      if (Array.isArray(attendanceData.weeklyTrend)) setAttendanceTrend(attendanceData.weeklyTrend);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
@@ -81,6 +98,21 @@ export default function DashboardPage() {
     () => people.filter((p) => p.status === "at_risk" || p.status === "inactive"),
     [people]
   );
+
+  const activePrayers = useMemo(
+    () => prayerRequests.filter((pr) => pr.status === "active"),
+    [prayerRequests]
+  );
+
+  const funnel = useMemo(() => {
+    const counts = { visitor: 0, connected: 0, joined: 0, serving: 0 };
+    people.forEach((p) => {
+      const stage = (p.funnelStage ?? "visitor") as keyof typeof counts;
+      if (stage in counts) counts[stage]++;
+      else counts.visitor++;
+    });
+    return counts;
+  }, [people]);
 
   const todayStr = now.toISOString().slice(0, 10);
   const upcomingEvents = useMemo(
@@ -147,11 +179,39 @@ export default function DashboardPage() {
           <h3 className="mb-4 text-base font-semibold text-gray-900">
             Attendance Trend
           </h3>
-          <div className="flex h-64 flex-col items-center justify-center text-gray-400">
-            <Clock className="mb-3 h-10 w-10" />
-            <p className="text-sm font-medium">Coming soon</p>
-            <p className="mt-1 text-xs">Attendance tracking will appear here</p>
-          </div>
+          {attendanceTrend.length === 0 ? (
+            <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+              <Users className="mb-3 h-10 w-10" />
+              <p className="text-sm font-medium">No attendance data yet</p>
+              <p className="mt-1 text-xs">Use Check In on events to start tracking</p>
+            </div>
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={attendanceTrend}>
+                  <defs>
+                    <linearGradient id="attendanceGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    dataKey="week"
+                    tick={{ fontSize: 12 }}
+                    stroke="#9ca3af"
+                    tickFormatter={(v: string) => { const d = new Date(v); return `${d.getMonth() + 1}/${d.getDate()}`; }}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                  <Tooltip
+                    contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
+                    labelFormatter={(v: string) => `Week of ${new Date(v).toLocaleDateString()}`}
+                  />
+                  <Area type="monotone" dataKey="attendance" stroke="#4f46e5" strokeWidth={2} fill="url(#attendanceGradient)" name="Attendance" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         <div className="card p-5">
@@ -189,10 +249,30 @@ export default function DashboardPage() {
           <h3 className="mb-4 text-base font-semibold text-gray-900">
             Newcomer Funnel
           </h3>
-          <div className="flex h-48 flex-col items-center justify-center text-gray-400">
-            <Clock className="mb-3 h-10 w-10" />
-            <p className="text-sm font-medium">Coming soon</p>
-            <p className="mt-1 text-xs">Newcomer tracking will appear here</p>
+          <div className="space-y-4">
+            {[
+              { label: "Visited", value: funnel.visitor, color: "bg-gray-300" },
+              { label: "Connected", value: funnel.connected, color: "bg-brand-300" },
+              { label: "Joined", value: funnel.joined, color: "bg-brand-500" },
+              { label: "Serving", value: funnel.serving, color: "bg-brand-600" },
+            ].map((step) => {
+              const max = Math.max(funnel.visitor, 1);
+              const pct = (step.value / max) * 100;
+              return (
+                <div key={step.label} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-gray-700">{step.label}</span>
+                    <span className="text-gray-500">{step.value}</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div
+                      className={cn("h-full rounded-full transition-all", step.color)}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -278,11 +358,24 @@ export default function DashboardPage() {
             <HeartHandshake className="h-4 w-4 text-brand-600" />
             Active Prayer Requests
           </h3>
-          <div className="flex h-48 flex-col items-center justify-center text-gray-400">
-            <Clock className="mb-3 h-10 w-10" />
-            <p className="text-sm font-medium">Coming soon</p>
-            <p className="mt-1 text-xs">Prayer request tracking will appear here</p>
-          </div>
+          {activePrayers.length === 0 ? (
+            <p className="py-4 text-sm text-gray-500">No active prayer requests.</p>
+          ) : (
+            <ul className="space-y-3">
+              {activePrayers.slice(0, 5).map((pr) => (
+                <li
+                  key={pr.id}
+                  className="rounded-lg border border-gray-100 p-3 hover:bg-gray-50"
+                >
+                  <p className="mb-1 font-medium text-gray-900">{pr.personName}</p>
+                  <p className="text-sm text-gray-600 line-clamp-2">{pr.request}</p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    <span className="badge badge-purple">{pr.prayerCount} praying</span>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

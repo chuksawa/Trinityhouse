@@ -16,6 +16,7 @@ type PersonRow = {
   last_attendance: string | null;
   giving_total: string;
   avatar_color: string | null;
+  funnel_stage: string | null;
 };
 
 /** GET: List all people (members) from DB. Auth required. Returns people + currentUserEditableRoles for UI. */
@@ -26,11 +27,29 @@ export async function GET() {
     const payload = token ? await verifyToken(token) : null;
     if (!payload) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { rows } = await query<PersonRow>(
-      `SELECT id, first_name, last_name, email, phone, role, join_date::text, status,
-              last_attendance::text, COALESCE(giving_total, 0)::text AS giving_total, avatar_color
-       FROM people ORDER BY last_name, first_name`
-    );
+    let rows: PersonRow[];
+    try {
+      const result = await query<PersonRow>(
+        `SELECT id, first_name, last_name, email, phone, role, join_date::text, status,
+                last_attendance::text, COALESCE(giving_total, 0)::text AS giving_total, avatar_color,
+                funnel_stage
+         FROM people ORDER BY last_name, first_name`
+      );
+      rows = result.rows;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("funnel_stage") || msg.includes("does not exist")) {
+        const result = await query<PersonRow>(
+          `SELECT id, first_name, last_name, email, phone, role, join_date::text, status,
+                  last_attendance::text, COALESCE(giving_total, 0)::text AS giving_total, avatar_color,
+                  NULL AS funnel_stage
+           FROM people ORDER BY last_name, first_name`
+        );
+        rows = result.rows;
+      } else {
+        throw e;
+      }
+    }
 
     const editableRoles = await getEditablePeopleRoles(payload.role);
 
@@ -47,6 +66,7 @@ export async function GET() {
         lastAttendance: r.last_attendance ?? null,
         givingTotal: parseFloat(r.giving_total) || 0,
         avatarColor: r.avatar_color ?? "bg-brand-500",
+        funnelStage: r.funnel_stage ?? "visitor",
       })),
       currentUserEditableRoles: editableRoles,
     });

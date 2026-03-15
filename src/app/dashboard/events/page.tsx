@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { Plus, Calendar, Clock, MapPin, Users, UserCheck, Globe, Trash2 } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Plus, Calendar, Clock, MapPin, Users, UserCheck, Globe, Trash2, UserPlus, X } from "lucide-react";
 import Modal from "@/components/modal";
 import { cn, formatDate } from "@/lib/utils";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
+type CheckInPerson = { id: string; firstName: string; lastName: string };
+type Attendee = { id: number; personId: string | null; name: string; checkedInAt: string };
 
 type EventType = "service" | "event" | "conference" | "meeting";
 type RecurrenceType = "none" | "daily" | "weekly" | "biweekly" | "monthly" | "yearly";
@@ -87,6 +90,144 @@ const emptyForm = {
   recurrenceEndDate: "",
 };
 
+function CheckInModal({
+  event,
+  onClose,
+  onCheckedIn,
+}: {
+  event: DashboardEvent;
+  onClose: () => void;
+  onCheckedIn: () => void;
+}) {
+  const [people, setPeople] = useState<CheckInPerson[]>([]);
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [search, setSearch] = useState("");
+  const [guestName, setGuestName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const loadAttendees = useCallback(() => {
+    fetch(`${BASE_PATH}/api/attendance?eventId=${encodeURIComponent(event.id)}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { attendees: [] }))
+      .then((d) => { if (Array.isArray(d.attendees)) setAttendees(d.attendees); })
+      .catch(() => {});
+  }, [event.id]);
+
+  useEffect(() => {
+    fetch(`${BASE_PATH}/api/people`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { people: [] }))
+      .then((d) => { if (Array.isArray(d.people)) setPeople(d.people); })
+      .catch(() => {});
+    loadAttendees();
+  }, [loadAttendees]);
+
+  const checkedIds = new Set(attendees.map((a) => a.personId).filter(Boolean));
+
+  const filtered = search.trim()
+    ? people.filter((p) => {
+        const full = `${p.firstName} ${p.lastName}`.toLowerCase();
+        return full.includes(search.toLowerCase()) && !checkedIds.has(p.id);
+      }).slice(0, 10)
+    : [];
+
+  async function checkIn(personId: string | null, guest?: string) {
+    setErr("");
+    setBusy(true);
+    try {
+      const res = await fetch(`${BASE_PATH}/api/attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ eventId: event.id, personId, guestName: guest }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setErr(data.error || "Failed"); return; }
+      setSearch("");
+      setGuestName("");
+      loadAttendees();
+      onCheckedIn();
+    } catch { setErr("Failed to check in"); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute right-4 top-4 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+          <X className="h-5 w-5" />
+        </button>
+
+        <h3 className="text-lg font-semibold text-gray-900">Check In — {event.title}</h3>
+        <p className="mb-4 text-sm text-gray-500">{formatDate(event.date)} · {event.time}</p>
+
+        <div className="mb-4">
+          <label className="mb-1 block text-sm font-medium text-gray-700">Search member</label>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input"
+            placeholder="Type a name…"
+          />
+          {filtered.length > 0 && (
+            <ul className="mt-1 max-h-36 overflow-y-auto rounded-lg border border-gray-200 bg-white">
+              {filtered.map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => checkIn(p.id)}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-brand-50 disabled:opacity-50"
+                  >
+                    {p.firstName} {p.lastName}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="mb-4 flex gap-2">
+          <input
+            value={guestName}
+            onChange={(e) => setGuestName(e.target.value)}
+            className="input flex-1"
+            placeholder="Guest name"
+          />
+          <button
+            type="button"
+            disabled={busy || !guestName.trim()}
+            onClick={() => checkIn(null, guestName.trim())}
+            className="btn-primary shrink-0"
+          >
+            <UserPlus className="h-4 w-4" />
+            Add
+          </button>
+        </div>
+
+        {err && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{err}</p>}
+
+        <div className="border-t border-gray-200 pt-4">
+          <h4 className="mb-2 text-sm font-semibold text-gray-700">
+            Checked in ({attendees.length})
+          </h4>
+          {attendees.length === 0 ? (
+            <p className="text-sm text-gray-400">No one checked in yet.</p>
+          ) : (
+            <ul className="max-h-48 space-y-1 overflow-y-auto">
+              {attendees.map((a) => (
+                <li key={a.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+                  <UserCheck className="h-3.5 w-3.5 text-green-500" />
+                  {a.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function EventsPage() {
   const [events, setEvents] = useState<DashboardEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +237,7 @@ export default function EventsPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [checkInEvent, setCheckInEvent] = useState<DashboardEvent | null>(null);
 
   function loadEvents() {
     setLoading(true);
@@ -282,73 +424,85 @@ export default function EventsPage() {
             {filteredEvents.map((event) => {
               const regPct = event.capacity > 0 ? Math.min(100, (event.registered / event.capacity) * 100) : event.registered > 0 ? 100 : 0;
               return (
-                <button
+                <div
                   key={event.id}
-                  type="button"
-                  onClick={() => openEdit(event)}
-                  className="card flex flex-col items-stretch gap-4 p-5 text-left transition-all hover:border-brand-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="card flex flex-col items-stretch gap-4 p-5 text-left transition-all hover:border-brand-200 hover:shadow-md"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className={cn("badge shrink-0", getTypeBadgeClass(event.type))}>
-                      {formatEventType(event.type)}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {event.showPublic && (
-                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700" title="Shown on public site">
-                          <Globe className="h-3 w-3 inline" />
-                        </span>
-                      )}
-                      {(event.recurrenceType ?? "none") !== "none" && (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800" title="Recurring">
-                          Repeats {RECURRENCE_OPTIONS.find((o) => o.value === (event.recurrenceType ?? "none"))?.label?.toLowerCase() ?? event.recurrenceType}
-                        </span>
-                      )}
-                      {event.checkedIn > 0 && (
-                        <span className="badge badge-green flex items-center gap-1">
-                          <UserCheck className="h-3 w-3" />
-                          {event.checkedIn} checked in
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{event.title}</h3>
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {formatDate(event.date)}
+                  <button
+                    type="button"
+                    onClick={() => openEdit(event)}
+                    className="flex flex-col items-stretch gap-4 text-left focus:outline-none"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className={cn("badge shrink-0", getTypeBadgeClass(event.type))}>
+                        {formatEventType(event.type)}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {event.time}
-                        {event.endTime ? ` – ${event.endTime}` : ""}
-                      </span>
-                      {event.location && (
-                        <span className="flex items-center gap-1 truncate">
-                          <MapPin className="h-3.5 w-3.5 shrink-0" />
-                          {event.location}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {event.showPublic && (event.registered > 0 || event.capacity > 0) && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-gray-600">
-                          <Users className="mr-1 inline h-3 w-3" />
-                          {event.registered} / {event.capacity} registered
-                        </span>
-                        {event.capacity > 0 && <span className="text-gray-400">{Math.round(regPct)}%</span>}
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                        <div
-                          className={cn("h-full rounded-full transition-all", regPct >= 100 ? "bg-amber-500" : "bg-brand-500")}
-                          style={{ width: `${regPct}%` }}
-                        />
+                      <div className="flex items-center gap-1.5">
+                        {event.showPublic && (
+                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700" title="Shown on public site">
+                            <Globe className="h-3 w-3 inline" />
+                          </span>
+                        )}
+                        {(event.recurrenceType ?? "none") !== "none" && (
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800" title="Recurring">
+                            Repeats {RECURRENCE_OPTIONS.find((o) => o.value === (event.recurrenceType ?? "none"))?.label?.toLowerCase() ?? event.recurrenceType}
+                          </span>
+                        )}
+                        {event.checkedIn > 0 && (
+                          <span className="badge badge-green flex items-center gap-1">
+                            <UserCheck className="h-3 w-3" />
+                            {event.checkedIn}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  )}
-                </button>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{event.title}</h3>
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {formatDate(event.date)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {event.time}
+                          {event.endTime ? ` – ${event.endTime}` : ""}
+                        </span>
+                        {event.location && (
+                          <span className="flex items-center gap-1 truncate">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            {event.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {event.showPublic && (event.registered > 0 || event.capacity > 0) && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-gray-600">
+                            <Users className="mr-1 inline h-3 w-3" />
+                            {event.registered} / {event.capacity} registered
+                          </span>
+                          {event.capacity > 0 && <span className="text-gray-400">{Math.round(regPct)}%</span>}
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                          <div
+                            className={cn("h-full rounded-full transition-all", regPct >= 100 ? "bg-amber-500" : "bg-brand-500")}
+                            style={{ width: `${regPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCheckInEvent(event)}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    <UserCheck className="h-3.5 w-3.5" />
+                    Check In
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -357,6 +511,14 @@ export default function EventsPage() {
             <p className="py-12 text-center text-gray-500">No events yet. Create one to show on the public site.</p>
           )}
         </>
+      )}
+
+      {checkInEvent && (
+        <CheckInModal
+          event={checkInEvent}
+          onClose={() => setCheckInEvent(null)}
+          onCheckedIn={loadEvents}
+        />
       )}
 
       {/* Create / Edit Modal */}

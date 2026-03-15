@@ -39,6 +39,7 @@ export async function PATCH(
       { key: "role", col: "role" },
       { key: "status", col: "status" },
       { key: "avatarColor", col: "avatar_color" },
+      { key: "funnelStage", col: "funnel_stage" },
     ];
 
     for (const { key, col } of allowedFields) {
@@ -58,10 +59,23 @@ export async function PATCH(
     }
 
     values.push(id);
-    await query(
-      `UPDATE people SET ${updates.join(", ")}, updated_at = NOW() WHERE id = $${idx}`,
-      values
-    );
+    try {
+      await query(
+        `UPDATE people SET ${updates.join(", ")}, updated_at = NOW() WHERE id = $${idx}`,
+        values
+      );
+    } catch (updateErr: unknown) {
+      const msg = updateErr instanceof Error ? updateErr.message : String(updateErr);
+      if (msg.includes("funnel_stage") && msg.includes("does not exist")) {
+        await query("ALTER TABLE people ADD COLUMN IF NOT EXISTS funnel_stage TEXT DEFAULT 'visitor'");
+        await query(
+          `UPDATE people SET ${updates.join(", ")}, updated_at = NOW() WHERE id = $${idx}`,
+          values
+        );
+      } else {
+        throw updateErr;
+      }
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {
