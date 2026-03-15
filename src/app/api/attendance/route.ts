@@ -87,7 +87,7 @@ export async function GET(req: Request) {
   }
 }
 
-/** POST: Check in a person (or guest) for an event. */
+/** POST: Self-check-in — the logged-in user checks themselves into an event. */
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
@@ -97,37 +97,27 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const eventId = (body.eventId ?? "").toString().trim();
-    const personId = (body.personId ?? "").toString().trim() || null;
-    const guestName = (body.guestName ?? "").toString().trim() || null;
 
     if (!eventId) {
       return NextResponse.json({ error: "Event ID is required." }, { status: 400 });
     }
-    if (!personId && !guestName) {
-      return NextResponse.json({ error: "Either a person or guest name is required." }, { status: 400 });
-    }
 
-    if (personId) {
-      try {
-        await query(
-          `INSERT INTO attendance_records (event_id, person_id) VALUES ($1, $2)`,
-          [eventId, personId]
-        );
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg.includes("unique") || msg.includes("duplicate")) {
-          return NextResponse.json({ error: "Already checked in." }, { status: 409 });
-        }
-        throw e;
-      }
-    } else {
+    const email = auth.email as string;
+
+    try {
       await query(
-        `INSERT INTO attendance_records (event_id, guest_name) VALUES ($1, $2)`,
-        [eventId, guestName]
+        `INSERT INTO attendance_records (event_id, person_id, guest_name)
+         VALUES ($1, NULL, $2)`,
+        [eventId, email]
       );
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("unique") || msg.includes("duplicate")) {
+        return NextResponse.json({ error: "You are already checked in." }, { status: 409 });
+      }
+      throw e;
     }
 
-    // Update the events.checked_in counter
     await query(
       "UPDATE events SET checked_in = (SELECT COUNT(*) FROM attendance_records WHERE event_id = $1) WHERE id = $1",
       [eventId]

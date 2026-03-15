@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, Calendar, Clock, MapPin, Users, UserCheck, Globe, Trash2, UserPlus, X } from "lucide-react";
+import { Plus, Calendar, Clock, MapPin, Users, UserCheck, Globe, Trash2, X } from "lucide-react";
 import Modal from "@/components/modal";
 import { cn, formatDate } from "@/lib/utils";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-type CheckInPerson = { id: string; firstName: string; lastName: string };
-type Attendee = { id: number; personId: string | null; name: string; checkedInAt: string };
+type Attendee = { id: number; name: string };
 
 type EventType = "service" | "event" | "conference" | "meeting";
 type RecurrenceType = "none" | "daily" | "weekly" | "biweekly" | "monthly" | "yearly";
@@ -99,11 +98,9 @@ function CheckInModal({
   onClose: () => void;
   onCheckedIn: () => void;
 }) {
-  const [people, setPeople] = useState<CheckInPerson[]>([]);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
-  const [search, setSearch] = useState("");
-  const [guestName, setGuestName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [checkedIn, setCheckedIn] = useState(false);
   const [err, setErr] = useState("");
 
   const loadAttendees = useCallback(() => {
@@ -113,24 +110,9 @@ function CheckInModal({
       .catch(() => {});
   }, [event.id]);
 
-  useEffect(() => {
-    fetch(`${BASE_PATH}/api/people`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { people: [] }))
-      .then((d) => { if (Array.isArray(d.people)) setPeople(d.people); })
-      .catch(() => {});
-    loadAttendees();
-  }, [loadAttendees]);
+  useEffect(() => { loadAttendees(); }, [loadAttendees]);
 
-  const checkedIds = new Set(attendees.map((a) => a.personId).filter(Boolean));
-
-  const filtered = search.trim()
-    ? people.filter((p) => {
-        const full = `${p.firstName} ${p.lastName}`.toLowerCase();
-        return full.includes(search.toLowerCase()) && !checkedIds.has(p.id);
-      }).slice(0, 10)
-    : [];
-
-  async function checkIn(personId: string | null, guest?: string) {
+  async function handleCheckIn() {
     setErr("");
     setBusy(true);
     try {
@@ -138,12 +120,15 @@ function CheckInModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ eventId: event.id, personId, guestName: guest }),
+        body: JSON.stringify({ eventId: event.id }),
       });
       const data = await res.json();
-      if (!res.ok) { setErr(data.error || "Failed"); return; }
-      setSearch("");
-      setGuestName("");
+      if (!res.ok) {
+        if (res.status === 409) { setCheckedIn(true); }
+        else { setErr(data.error || "Failed"); }
+        return;
+      }
+      setCheckedIn(true);
       loadAttendees();
       onCheckedIn();
     } catch { setErr("Failed to check in"); }
@@ -152,70 +137,42 @@ function CheckInModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
-      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute right-4 top-4 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
           <X className="h-5 w-5" />
         </button>
 
-        <h3 className="text-lg font-semibold text-gray-900">Check In — {event.title}</h3>
-        <p className="mb-4 text-sm text-gray-500">{formatDate(event.date)} · {event.time}</p>
+        <h3 className="text-lg font-semibold text-gray-900">{event.title}</h3>
+        <p className="mb-5 text-sm text-gray-500">{formatDate(event.date)} · {event.time}</p>
 
-        <div className="mb-4">
-          <label className="mb-1 block text-sm font-medium text-gray-700">Search member</label>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input"
-            placeholder="Type a name…"
-          />
-          {filtered.length > 0 && (
-            <ul className="mt-1 max-h-36 overflow-y-auto rounded-lg border border-gray-200 bg-white">
-              {filtered.map((p) => (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => checkIn(p.id)}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-brand-50 disabled:opacity-50"
-                  >
-                    {p.firstName} {p.lastName}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="mb-4 flex gap-2">
-          <input
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
-            className="input flex-1"
-            placeholder="Guest name"
-          />
+        {checkedIn ? (
+          <div className="flex flex-col items-center rounded-lg bg-green-50 py-5 text-center">
+            <UserCheck className="mb-2 h-8 w-8 text-green-500" />
+            <p className="font-medium text-green-700">You&apos;re checked in!</p>
+          </div>
+        ) : (
           <button
             type="button"
-            disabled={busy || !guestName.trim()}
-            onClick={() => checkIn(null, guestName.trim())}
-            className="btn-primary shrink-0"
+            disabled={busy}
+            onClick={handleCheckIn}
+            className="w-full rounded-lg bg-brand-600 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
-            <UserPlus className="h-4 w-4" />
-            Add
+            {busy ? "Checking in…" : "Check In"}
           </button>
-        </div>
+        )}
 
-        {err && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{err}</p>}
+        {err && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{err}</p>}
 
-        <div className="border-t border-gray-200 pt-4">
+        <div className="mt-5 border-t border-gray-200 pt-4">
           <h4 className="mb-2 text-sm font-semibold text-gray-700">
             Checked in ({attendees.length})
           </h4>
           {attendees.length === 0 ? (
             <p className="text-sm text-gray-400">No one checked in yet.</p>
           ) : (
-            <ul className="max-h-48 space-y-1 overflow-y-auto">
+            <ul className="max-h-40 space-y-1 overflow-y-auto">
               {attendees.map((a) => (
-                <li key={a.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+                <li key={a.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-700">
                   <UserCheck className="h-3.5 w-3.5 text-green-500" />
                   {a.name}
                 </li>
