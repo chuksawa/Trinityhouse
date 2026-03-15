@@ -13,9 +13,23 @@ async function requireAuth() {
   return payload;
 }
 
+let tableReady = false;
+
+async function ensureColumns() {
+  if (tableReady) return;
+  try {
+    await query("ALTER TABLE prayer_requests ALTER COLUMN person_id DROP NOT NULL");
+  } catch { /* already nullable or doesn't exist */ }
+  try {
+    await query("ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS person_name TEXT");
+  } catch { /* already exists */ }
+  tableReady = true;
+}
+
 type Row = {
   id: string;
-  person_id: string;
+  person_name: string | null;
+  person_id: string | null;
   request: string;
   request_date: string;
   status: string;
@@ -29,8 +43,9 @@ export async function GET() {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
   try {
+    await ensureColumns();
     const { rows } = await query<Row>(
-      `SELECT pr.id, pr.person_id, pr.request, pr.request_date::text, pr.status, pr.prayer_count,
+      `SELECT pr.id, pr.person_name, pr.person_id, pr.request, pr.request_date::text, pr.status, pr.prayer_count,
               p.first_name, p.last_name
        FROM prayer_requests pr
        LEFT JOIN people p ON p.id = pr.person_id
@@ -39,8 +54,7 @@ export async function GET() {
     );
     const prayerRequests = rows.map((r) => ({
       id: r.id,
-      personId: r.person_id,
-      personName: [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown",
+      personName: r.person_name || [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown",
       request: r.request,
       requestDate: r.request_date,
       status: r.status,
@@ -58,18 +72,19 @@ export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
   try {
+    await ensureColumns();
     const body = await req.json();
-    const personId = (body.personId ?? "").toString().trim();
+    const personName = (body.personName ?? "").toString().trim();
     const request = (body.request ?? "").toString().trim();
-    if (!personId || !request) {
-      return NextResponse.json({ error: "Person and request text are required." }, { status: 400 });
+    if (!personName || !request) {
+      return NextResponse.json({ error: "Name and request text are required." }, { status: 400 });
     }
     const id = `pr-${Date.now()}`;
     const date = new Date().toISOString().slice(0, 10);
     await query(
-      `INSERT INTO prayer_requests (id, person_id, request, request_date, status, prayer_count)
-       VALUES ($1, $2, $3, $4::date, 'active', 0)`,
-      [id, personId, request, date]
+      `INSERT INTO prayer_requests (id, person_id, person_name, request, request_date, status, prayer_count)
+       VALUES ($1, NULL, $2, $3, $4::date, 'active', 0)`,
+      [id, personName, request, date]
     );
     return NextResponse.json({ ok: true, id });
   } catch (e) {

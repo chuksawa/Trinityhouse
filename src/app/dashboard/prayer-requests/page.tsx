@@ -9,18 +9,11 @@ const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 type PrayerRequest = {
   id: string;
-  personId: string;
   personName: string;
   request: string;
   requestDate: string;
   status: string;
   prayerCount: number;
-};
-
-type Person = {
-  id: string;
-  firstName: string;
-  lastName: string;
 };
 
 const STATUS_TABS = [
@@ -31,23 +24,19 @@ const STATUS_TABS = [
 
 export default function PrayerRequestsPage() {
   const [requests, setRequests] = useState<PrayerRequest[]>([]);
-  const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("active");
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ personId: "", request: "" });
+  const [form, setForm] = useState({ personName: "", request: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   function load() {
     setLoading(true);
-    Promise.all([
-      fetch(`${BASE_PATH}/api/prayer-requests`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { prayerRequests: [] })),
-      fetch(`${BASE_PATH}/api/people`, { credentials: "include" }).then((r) => (r.ok ? r.json() : { people: [] })),
-    ])
-      .then(([prData, pData]) => {
-        if (Array.isArray(prData.prayerRequests)) setRequests(prData.prayerRequests);
-        if (Array.isArray(pData.people)) setPeople(pData.people);
+    fetch(`${BASE_PATH}/api/prayer-requests`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { prayerRequests: [] }))
+      .then((data) => {
+        if (Array.isArray(data.prayerRequests)) setRequests(data.prayerRequests);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -69,8 +58,8 @@ export default function PrayerRequestsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!form.personId || !form.request.trim()) {
-      setError("Select a person and enter the prayer request.");
+    if (!form.personName.trim() || !form.request.trim()) {
+      setError("Name and prayer request are required.");
       return;
     }
     setSaving(true);
@@ -79,7 +68,7 @@ export default function PrayerRequestsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ personId: form.personId, request: form.request.trim() }),
+        body: JSON.stringify({ personName: form.personName.trim(), request: form.request.trim() }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -87,7 +76,7 @@ export default function PrayerRequestsPage() {
         return;
       }
       setCreateOpen(false);
-      setForm({ personId: "", request: "" });
+      setForm({ personName: "", request: "" });
       load();
     } catch {
       setError("Something went wrong");
@@ -222,20 +211,16 @@ export default function PrayerRequestsPage() {
         <form onSubmit={handleCreate} className="space-y-4">
           {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Person</label>
-            <select
-              value={form.personId}
-              onChange={(e) => setForm((f) => ({ ...f, personId: e.target.value }))}
+            <label className="mb-1 block text-sm font-medium text-gray-700">Who needs prayer?</label>
+            <input
+              type="text"
+              value={form.personName}
+              onChange={(e) => setForm((f) => ({ ...f, personName: e.target.value }))}
               className="input"
+              placeholder="e.g. John Doe"
               required
-            >
-              <option value="">Select a person…</option>
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.firstName} {p.lastName}
-                </option>
-              ))}
-            </select>
+            />
+            <p className="mt-1 text-xs text-gray-400">Enter the name of the person you&apos;d like us to pray for.</p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Prayer Request</label>
