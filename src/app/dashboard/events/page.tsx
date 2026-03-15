@@ -331,7 +331,7 @@ export default function EventsPage() {
                       )}
                     </div>
                   </div>
-                  {(event.registered > 0 || event.capacity > 0) && (
+                  {event.showPublic && (event.registered > 0 || event.capacity > 0) && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-gray-600">

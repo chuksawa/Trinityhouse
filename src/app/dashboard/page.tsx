@@ -32,6 +32,7 @@ type DashboardEvent = {
   time: string;
   capacity: number;
   registered: number;
+  showPublic: boolean;
 };
 
 export default function DashboardPage() {
@@ -261,9 +262,11 @@ export default function DashboardPage() {
                       {formatDate(event.date)} · {event.time}
                     </p>
                   </div>
-                  <span className="badge badge-blue shrink-0">
-                    {event.registered}/{event.capacity} registered
-                  </span>
+                  {event.showPublic && (
+                    <span className="badge badge-blue shrink-0">
+                      {event.registered}/{event.capacity} registered
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
