@@ -87,16 +87,16 @@ export default function Sidebar({ isMobile, open = false, onClose, onNavigate }:
   const panel = (
     <>
       {/* Logo — same height as topbar (h-20) so the divider lines up */}
-      <div className="flex h-20 shrink-0 items-center justify-between border-b border-gray-800 px-4">
+      <div className={cn("flex h-20 shrink-0 items-center border-b border-gray-800 px-4", !isMobile && collapsed ? "justify-center" : "justify-between")}>
         <Link
           href="/home"
-          className="flex items-center gap-3 transition-colors hover:bg-white/5 rounded-lg -m-2 p-2"
+          className={cn("flex items-center gap-3 transition-colors hover:bg-white/5 rounded-lg -m-2 p-2", !isMobile && collapsed && "justify-center")}
           onClick={handleNavClick}
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white">
             <Church className="h-5 w-5" />
           </div>
-          {(!isMobile || !collapsed) && (
+          {(isMobile || !collapsed) && (
             <div className="overflow-hidden">
               <h1 className="text-base font-bold text-white tracking-tight">
                 Trinity House
@@ -132,13 +132,14 @@ export default function Sidebar({ isMobile, open = false, onClose, onNavigate }:
               onClick={handleNavClick}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                !isMobile && collapsed && "justify-center px-0",
                 isActive
                   ? "bg-brand-600/20 text-brand-300"
                   : "text-gray-400 hover:bg-white/5 hover:text-white"
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
-              {(!isMobile || !collapsed) && <span>{item.label}</span>}
+              {(isMobile || !collapsed) && <span>{item.label}</span>}
             </Link>
           );
         })}
@@ -152,13 +153,14 @@ export default function Sidebar({ isMobile, open = false, onClose, onNavigate }:
             onClick={handleNavClick}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              !isMobile && collapsed && "justify-center px-0",
               pathname === "/dashboard/admin" || pathname.startsWith("/dashboard/admin")
                 ? "bg-brand-600/20 text-brand-300"
                 : "text-gray-400 hover:bg-white/5 hover:text-white"
             )}
           >
             <Shield className="h-5 w-5 shrink-0" />
-            {(!isMobile || !collapsed) && <span>Admin</span>}
+            {(isMobile || !collapsed) && <span>Admin</span>}
           </Link>
         )}
         {visibleBottomItems.map((item) => (
@@ -168,29 +170,36 @@ export default function Sidebar({ isMobile, open = false, onClose, onNavigate }:
             onClick={handleNavClick}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              !isMobile && collapsed && "justify-center px-0",
               pathname === item.href
                 ? "bg-brand-600/20 text-brand-300"
                 : "text-gray-400 hover:bg-white/5 hover:text-white"
             )}
           >
             <item.icon className="h-5 w-5 shrink-0" />
-            {(!isMobile || !collapsed) && <span>{item.label}</span>}
+            {(isMobile || !collapsed) && <span>{item.label}</span>}
           </Link>
         ))}
         <button
           type="button"
           onClick={handleSignOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white",
+            !isMobile && collapsed && "justify-center px-0"
+          )}
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {(!isMobile || !collapsed) && <span>Sign Out</span>}
+          {(isMobile || !collapsed) && <span>Sign Out</span>}
         </button>
 
         {!isMobile && (
           <>
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-300"
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-300",
+                collapsed && "justify-center px-0"
+              )}
             >
               {collapsed ? (
                 <ChevronRight className="h-4 w-4 shrink-0" />
@@ -204,7 +213,10 @@ export default function Sidebar({ isMobile, open = false, onClose, onNavigate }:
             <button
               type="button"
               onClick={() => setLayoutMode("topbar")}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-300"
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-300",
+                collapsed && "justify-center px-0"
+              )}
               title="Switch to top bar navigation"
             >
               <PanelTop className="h-4 w-4 shrink-0" />
