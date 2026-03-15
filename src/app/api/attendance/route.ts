@@ -22,6 +22,7 @@ async function ensureTable() {
   try {
     await query("CREATE INDEX IF NOT EXISTS idx_attendance_event ON attendance_records(event_id)");
     await query("CREATE INDEX IF NOT EXISTS idx_attendance_person ON attendance_records(person_id)");
+    await query("CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_event_guest ON attendance_records(event_id, guest_name) WHERE guest_name IS NOT NULL");
   } catch {
     // indexes may already exist
   }
@@ -104,19 +105,19 @@ export async function POST(req: Request) {
 
     const email = auth.email as string;
 
-    try {
-      await query(
-        `INSERT INTO attendance_records (event_id, person_id, guest_name)
-         VALUES ($1, NULL, $2)`,
-        [eventId, email]
-      );
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("unique") || msg.includes("duplicate")) {
-        return NextResponse.json({ error: "You are already checked in." }, { status: 409 });
-      }
-      throw e;
+    const { rows: existing } = await query<{ id: number }>(
+      "SELECT id FROM attendance_records WHERE event_id = $1 AND guest_name = $2 LIMIT 1",
+      [eventId, email]
+    );
+    if (existing.length > 0) {
+      return NextResponse.json({ error: "You are already checked in." }, { status: 409 });
     }
+
+    await query(
+      `INSERT INTO attendance_records (event_id, person_id, guest_name)
+       VALUES ($1, NULL, $2)`,
+      [eventId, email]
+    );
 
     await query(
       "UPDATE events SET checked_in = (SELECT COUNT(*) FROM attendance_records WHERE event_id = $1) WHERE id = $1",
